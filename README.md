@@ -1,11 +1,12 @@
 # Complete Arbitration Mesh (CAM)
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/cam-protocol/assets/main/logo.png" alt="Complete Arbitration Mesh Logo" width="200"/>
+  <img src="docs/assets/logo.svg" alt="Complete Arbitration Mesh Logo" width="200"/>
+  <h3>Complete Arbitration Mesh (CAM) Protocol</h3>
   
-  [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE-CORE)
-  [![Enterprise License: Commons Clause](https://img.shields.io/badge/License-Commons%20Clause-orange.svg)](LICENSE-ENTERPRISE)
-  [![Version](https://img.shields.io/badge/Version-2.0.0-brightgreen.svg)](RELEASE_NOTES.md)
+  [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+  [![Version](https://img.shields.io/badge/Version-2.0.0-brightgreen.svg)](docs/RELEASE_NOTES.md)
+  [![Compliance](https://img.shields.io/badge/Compliance-GDPR%20|%20CCPA-green.svg)](docs/legal/COMPLIANCE_CHECKLIST.md)
   
   **Intelligent Orchestration and Collaboration for Modern AI Ecosystems**
 </div>
@@ -113,13 +114,23 @@ The Complete Arbitration Mesh integrates two powerful systems:
 
 ## 📖 Documentation
 
+### Guides
 - [Quick Start Guide](docs/guides/quick-start.md)
+- [Deployment Readiness](docs/DEPLOYMENT_READINESS.md)
+- [Proof of Value](docs/PROOF_OF_VALUE.md)
+
+### Technical Documentation
 - [API Reference](docs/api/README.md)
 - [Architecture Overview](docs/architecture/README.md)
-- [Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE.md)
-- [Migration from CAM Classic](docs/guides/migration.md)
-- [Proof of Value](docs/PROOF_OF_VALUE.md)
-- [Payment Integration](docs/payment/README.md)
+
+### Legal & Compliance
+- [Compliance Checklist](docs/legal/COMPLIANCE_CHECKLIST.md)
+- [Privacy Policy](docs/legal/PRIVACY_POLICY.md)
+- [Terms of Service](docs/legal/TERMS_OF_SERVICE.md)
+- [GDPR Compliance](docs/legal/GDPR_COMPLIANCE.md)
+- [CCPA Compliance](docs/legal/CCPA_COMPLIANCE.md)
+- [Security Policy](docs/legal/SECURITY_POLICY.md)
+- [Data Processing Agreement](docs/legal/DATA_PROCESSING_AGREEMENT.md)
 
 ## 🔧 Development
 
@@ -216,6 +227,19 @@ npm run demo:value
 ```
 
 See our [Proof of Value](docs/PROOF_OF_VALUE.md) document for comprehensive benchmarking results and case studies.
+
+## 🔒 Legal & Compliance
+
+The CAM Protocol is designed with security and compliance at its core:
+
+- **[Privacy Policy](docs/legal/PRIVACY_POLICY.md)** - How we handle user data
+- **[Terms of Service](docs/legal/TERMS_OF_SERVICE.md)** - Rules for using our service
+- **[GDPR Compliance](docs/legal/GDPR_COMPLIANCE.md)** - EU data protection compliance
+- **[CCPA Compliance](docs/legal/CCPA_COMPLIANCE.md)** - California privacy compliance
+- **[Security Policy](docs/legal/SECURITY_POLICY.md)** - Our security practices
+- **[Data Processing Agreement](docs/legal/DATA_PROCESSING_AGREEMENT.md)** - For processing customer data
+- **[Acceptable Use Policy](docs/legal/ACCEPTABLE_USE_POLICY.md)** - Guidelines for acceptable use
+- **[Service Level Agreement](docs/legal/SERVICE_LEVEL_AGREEMENT.md)** - Our uptime and performance guarantees
 
 ---
 
