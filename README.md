@@ -168,13 +168,14 @@ The Complete Arbitration Mesh takes security seriously:
 
 ## 📋 Subscription Tiers
 
-| Feature | Community | Professional | Enterprise |
-|---------|:---------:|:------------:|:----------:|
-| **AI Model Arbitration** | ✅ | ✅ | ✅ |
-| **Agent Collaboration** | Basic | Advanced | Comprehensive |
-| **Policy Management** | Limited | Standard | Advanced |
-| **Support** | Community | Business Hours | 24/7 Premium |
-| **Price** | Free | $299/mo | $4,999/mo |
+| Feature | Community | Growth | Professional | Enterprise |
+|---------|:---------:|:------:|:------------:|:----------:|
+| **AI Model Arbitration** | ✅ | ✅ | ✅ | ✅ |
+| **Agent Collaboration** | Basic | Standard | Advanced | Comprehensive |
+| **Policy Management** | Limited | Standard | Advanced | Enterprise-grade |
+| **Support** | Community | Email | Business Hours | 24/7 Premium |
+| **SLA** | None | 99.9% | 99.95% | 99.99% |
+| **Price** | Free | $149/mo | $199/mo | From $1,999/mo |
 
 ## 🤝 Contributing
 
