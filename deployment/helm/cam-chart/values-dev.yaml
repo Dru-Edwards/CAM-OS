@@ -1,0 +1,132 @@
+# Development Environment Values
+# Optimized for local development and testing
+
+replicaCount: 1
+
+image:
+  repository: cam/complete-arbitration-mesh
+  tag: "dev"
+  pullPolicy: Always
+
+# Disable autoscaling for development
+autoscaling:
+  enabled: false
+
+# Reduced resource requirements for development
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# Development environment configuration
+app:
+  nodeEnv: development
+  logLevel: debug
+  environment: development
+
+# CAM development configuration
+cam:
+  meshId: "dev-mesh"
+  nodeType: "arbitrator"
+  consensus:
+    algorithm: "raft"
+    threshold: 0.5
+  arbitration:
+    timeout: "10s"
+    maxParticipants: 3
+    minParticipants: 1
+
+# Disable persistence for faster startup
+persistence:
+  enabled: false
+
+# Disable backup jobs in development
+backupCronJob:
+  enabled: false
+
+cleanupCronJob:
+  enabled: false
+
+# Simple ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: cam-dev.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Disable advanced monitoring features
+monitoring:
+  serviceMonitor:
+    enabled: false
+  prometheusRule:
+    enabled: false
+
+# Network policy disabled for easier development
+networkPolicy:
+  enabled: false
+
+# Simplified database configuration
+postgresql:
+  enabled: true
+  auth:
+    username: cam
+    password: devpassword
+    database: cam_dev
+  primary:
+    persistence:
+      enabled: false
+
+# Simplified cache configuration
+redis:
+  enabled: true
+  auth:
+    password: devpassword
+  master:
+    persistence:
+      enabled: false
+
+# Development security (less strict)
+security:
+  jwt:
+    secret: "dev-jwt-secret-not-for-production"
+  encryption:
+    key: "dev-encryption-key-32-chars-long"
+  signing:
+    key: "dev-signing-key-not-for-production"
+
+# Disable RBAC restrictions for easier development
+rbac:
+  createNamespaceRole: false
+
+# Enable all integrations for testing
+integrations:
+  openai:
+    enabled: true
+    apiKey: "sk-test-key"
+  anthropic:
+    enabled: true
+    apiKey: "test-key"
+
+# Enable testing
+tests:
+  enabled: true
+
+# gRPC enabled for testing
+grpc:
+  enabled: true
+  ingress:
+    enabled: true
+    hosts:
+      - host: grpc-dev.local
+        paths:
+          - path: /
+            pathType: Prefix

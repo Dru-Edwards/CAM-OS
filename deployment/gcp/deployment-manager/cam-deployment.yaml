@@ -1,0 +1,53 @@
+# GCP Deployment Manager Configuration
+# Environment: {{ env.name }}
+
+imports:
+- path: cam-infrastructure.yaml
+
+resources:
+- name: cam-infrastructure
+  type: cam-infrastructure.yaml
+  properties:
+    # Project Configuration
+    PROJECT_ID: {{ env.properties.projectId }}
+    REGION: {{ env.properties.region }}
+    ENV: {{ env.name }}
+    
+    # Domain and SSL
+    DOMAIN_NAME: {{ env.properties.domainName }}
+    SSL_ENABLED: {{ env.properties.sslEnabled }}
+    
+    # Database Configuration
+    DATABASE_TIER: {{ env.properties.database.tier }}
+    DATABASE_DISK_SIZE: {{ env.properties.database.diskSize }}
+    HA_ENABLED: {{ env.properties.database.highAvailability }}
+    DELETION_PROTECTION: {{ env.properties.database.deletionProtection }}
+    
+    # Redis Configuration
+    REDIS_TIER: {{ env.properties.redis.tier }}
+    REDIS_MEMORY_SIZE: {{ env.properties.redis.memorySizeGb }}
+    
+    # Cloud Run Configuration
+    IMAGE_TAG: {{ env.properties.cloudRun.imageTag }}
+    MIN_INSTANCES: {{ env.properties.cloudRun.scaling.minInstances }}
+    MAX_INSTANCES: {{ env.properties.cloudRun.scaling.maxInstances }}
+    CPU_LIMIT: {{ env.properties.cloudRun.resources.cpu }}
+    MEMORY_LIMIT: {{ env.properties.cloudRun.resources.memory }}
+    LOG_LEVEL: {{ env.properties.cloudRun.logLevel }}
+    
+    # GitHub Configuration
+    GITHUB_OWNER: {{ env.properties.github.owner }}
+    GITHUB_REPO: {{ env.properties.github.repo }}
+    
+    # Monitoring
+    ALERT_EMAIL: {{ env.properties.monitoring.alertEmail }}
+
+outputs:
+- name: applicationUrl
+  value: $(ref.cam-infrastructure.cloudRunUrl)
+- name: databaseConnection
+  value: $(ref.cam-infrastructure.databaseConnectionName)
+- name: redisEndpoint
+  value: $(ref.cam-infrastructure.redisHost)
+- name: loadBalancerIp
+  value: $(ref.cam-infrastructure.loadBalancerIp)

@@ -1,0 +1,253 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 2.1.0)'
+        required: true
+        type: string
+
+env:
+  NODE_VERSION: '18.x'
+
+jobs:
+  # Create GitHub Release
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    
+    outputs:
+      release-id: ${{ steps.create-release.outputs.id }}
+      upload-url: ${{ steps.create-release.outputs.upload_url }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get version
+      id: get-version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Generate changelog from git commits
+        echo "## Changes" > CHANGELOG.md
+        git log --pretty=format:"- %s (%h)" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "## Full Changelog" >> CHANGELOG.md
+        echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$(git describe --tags --abbrev=0 HEAD^)...${{ steps.get-version.outputs.version }}" >> CHANGELOG.md
+
+    - name: Create Release
+      id: create-release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get-version.outputs.version }}
+        release_name: CAM Protocol ${{ steps.get-version.outputs.version }}
+        body_path: CHANGELOG.md
+        draft: false
+        prerelease: ${{ contains(steps.get-version.outputs.version, '-') }}
+
+  # Build and Package
+  build-packages:
+    name: Build Packages
+    runs-on: ubuntu-latest
+    needs: create-release
+    strategy:
+      matrix:
+        target: [linux-x64, win-x64, darwin-x64, darwin-arm64]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build package
+      run: npm run build
+
+    - name: Create distribution package
+      run: |
+        mkdir -p dist-packages
+        tar -czf dist-packages/cam-protocol-${{ matrix.target }}.tar.gz \
+          -C dist . \
+          --transform 's,^,cam-protocol/,'
+
+    - name: Upload package to release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload-url }}
+        asset_path: dist-packages/cam-protocol-${{ matrix.target }}.tar.gz
+        asset_name: cam-protocol-${{ matrix.target }}.tar.gz
+        asset_content_type: application/gzip
+
+  # Publish to NPM
+  publish-npm:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    needs: create-release
+    if: "!contains(github.ref, '-')"  # Only publish stable releases
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build package
+      run: npm run build
+
+    - name: Publish to NPM
+      run: npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Build and Push Docker Images
+  docker-release:
+    name: Docker Release
+    runs-on: ubuntu-latest
+    needs: create-release
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Get version
+      id: get-version
+      run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: |
+          ghcr.io/${{ github.repository }}
+          ${{ secrets.DOCKERHUB_USERNAME }}/cam-arbitration-mesh
+        tags: |
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=raw,value=latest
+
+    - name: Build and push Docker images
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Create Helm Chart Release
+  helm-release:
+    name: Helm Chart Release
+    runs-on: ubuntu-latest
+    needs: [create-release, docker-release]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Get version
+      id: get-version
+      run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Setup Helm
+      uses: azure/setup-helm@v3
+
+    - name: Package Helm chart
+      run: |
+        cd deployment/kubernetes/helm
+        helm package . --version ${{ steps.get-version.outputs.version }} --app-version ${{ steps.get-version.outputs.version }}
+
+    - name: Upload Helm chart to release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload-url }}
+        asset_path: deployment/kubernetes/helm/cam-arbitration-mesh-${{ steps.get-version.outputs.version }}.tgz
+        asset_name: cam-arbitration-mesh-helm-${{ steps.get-version.outputs.version }}.tgz
+        asset_content_type: application/gzip
+
+  # Notify stakeholders
+  notify:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: [publish-npm, docker-release, helm-release]
+    if: always()
+    
+    steps:
+    - name: Get version
+      id: get-version
+      run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Notify Slack
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#releases'
+        text: |
+          🚀 CAM Protocol ${{ steps.get-version.outputs.version }} has been released!
+          
+          📦 NPM: https://www.npmjs.com/package/@cam-protocol/complete-arbitration-mesh
+          🐳 Docker: https://ghcr.io/${{ github.repository }}
+          📋 Release Notes: https://github.com/${{ github.repository }}/releases/tag/${{ steps.get-version.outputs.version }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Update documentation
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.DOCS_UPDATE_TOKEN }}
+        repository: cam-protocol/docs
+        event-type: version-update
+        client-payload: '{"version": "${{ steps.get-version.outputs.version }}", "repository": "${{ github.repository }}"}'

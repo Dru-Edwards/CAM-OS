@@ -1,0 +1,225 @@
+{{- if .Values.initJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "cam-chart.fullname" . }}-init
+  labels:
+    {{- include "cam-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: init
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      name: {{ include "cam-chart.fullname" . }}-init
+      labels:
+        {{- include "cam-chart.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: init
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: init-database
+          image: "{{ .Values.initJob.image.repository }}:{{ .Values.initJob.image.tag }}"
+          imagePullPolicy: {{ .Values.initJob.image.pullPolicy }}
+          env:
+            {{- if .Values.postgresql.enabled }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cam-chart.fullname" . }}-secret
+                  key: database-url
+            {{- end }}
+            {{- range $key, $value := .Values.initJob.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          command:
+            {{- toYaml .Values.initJob.command | nindent 12 }}
+          args:
+            {{- toYaml .Values.initJob.args | nindent 12 }}
+          resources:
+            {{- toYaml .Values.initJob.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+---
+{{- if .Values.migrationJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "cam-chart.fullname" . }}-migration-{{ .Release.Revision }}
+  labels:
+    {{- include "cam-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migration
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "-3"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      name: {{ include "cam-chart.fullname" . }}-migration
+      labels:
+        {{- include "cam-chart.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migration
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            {{- if .Values.postgresql.enabled }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cam-chart.fullname" . }}-secret
+                  key: database-url
+            {{- end }}
+            - name: NODE_ENV
+              value: "migration"
+          command: {{ .Values.migrationJob.command | toJson }}
+          args: {{ .Values.migrationJob.args | toJson }}
+          resources:
+            {{- toYaml .Values.migrationJob.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+---
+{{- if .Values.backupCronJob.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "cam-chart.fullname" . }}-backup
+  labels:
+    {{- include "cam-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+spec:
+  schedule: {{ .Values.backupCronJob.schedule | quote }}
+  concurrencyPolicy: {{ .Values.backupCronJob.concurrencyPolicy }}
+  failedJobsHistoryLimit: {{ .Values.backupCronJob.failedJobsHistoryLimit }}
+  successfulJobsHistoryLimit: {{ .Values.backupCronJob.successfulJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "cam-chart.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: OnFailure
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: backup
+              image: "{{ .Values.backupCronJob.image.repository }}:{{ .Values.backupCronJob.image.tag }}"
+              imagePullPolicy: {{ .Values.backupCronJob.image.pullPolicy }}
+              env:
+                {{- if .Values.postgresql.enabled }}
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "cam-chart.fullname" . }}-secret
+                      key: database-url
+                {{- end }}
+                - name: BACKUP_TIMESTAMP
+                  value: "$(date +%Y%m%d_%H%M%S)"
+                {{- range $key, $value := .Values.backupCronJob.env }}
+                - name: {{ $key }}
+                  value: {{ $value | quote }}
+                {{- end }}
+              command:
+                {{- toYaml .Values.backupCronJob.command | nindent 16 }}
+              args:
+                {{- toYaml .Values.backupCronJob.args | nindent 16 }}
+              resources:
+                {{- toYaml .Values.backupCronJob.resources | nindent 16 }}
+              volumeMounts:
+                {{- if .Values.persistence.backup.enabled }}
+                - name: backup-storage
+                  mountPath: /backup
+                {{- end }}
+          volumes:
+            {{- if .Values.persistence.backup.enabled }}
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: {{ include "cam-chart.fullname" . }}-backup-pvc
+            {{- end }}
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}
+---
+{{- if .Values.cleanupCronJob.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "cam-chart.fullname" . }}-cleanup
+  labels:
+    {{- include "cam-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cleanup
+spec:
+  schedule: {{ .Values.cleanupCronJob.schedule | quote }}
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 1
+  successfulJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "cam-chart.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: cleanup
+        spec:
+          restartPolicy: OnFailure
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: cleanup
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              env:
+                {{- if .Values.postgresql.enabled }}
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "cam-chart.fullname" . }}-secret
+                      key: database-url
+                {{- end }}
+                {{- if .Values.redis.enabled }}
+                - name: REDIS_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "cam-chart.fullname" . }}-secret
+                      key: redis-url
+                {{- end }}
+                - name: CLEANUP_RETENTION_DAYS
+                  value: {{ .Values.cleanupCronJob.retentionDays | quote }}
+              command: {{ .Values.cleanupCronJob.command | toJson }}
+              args: {{ .Values.cleanupCronJob.args | toJson }}
+              resources:
+                {{- toYaml .Values.cleanupCronJob.resources | nindent 16 }}
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

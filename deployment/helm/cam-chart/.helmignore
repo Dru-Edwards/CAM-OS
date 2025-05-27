@@ -1,0 +1,93 @@
+# Patterns to ignore when building packages.
+# This supports shell glob matching, relative path matching, and
+# negation (prefixed with !). Only one pattern per line.
+.DS_Store
+# Common VCS dirs
+.git/
+.gitignore
+.bzr/
+.bzrignore
+.hg/
+.hgignore
+.svn/
+# Common backup files
+*.swp
+*.bak
+*.tmp
+*.orig
+*~
+# Various IDEs
+.project
+.idea/
+*.tmproj
+.vscode/
+
+# Helm-specific ignores
+*.tgz
+.helmignore
+
+# Development and testing files
+test/
+tests/
+*.test
+*.spec
+coverage/
+*.log
+
+# Documentation (keep README.md)
+docs/
+*.md
+!README.md
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+Jenkinsfile
+azure-pipelines.yml
+
+# Node.js files (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Python files (if any)
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+venv/
+env/
+
+# Terraform files (if any)
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+
+# Editor files
+*.sublime-*
+*.kate-swp
+.vimrc
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Icon?
+.AppleDouble
+.LSOverride
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Examples and samples (uncomment if you don't want to include them)
+# examples/
+# samples/

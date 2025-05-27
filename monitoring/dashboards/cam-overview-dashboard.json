@@ -1,0 +1,298 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "cam-overview",
+    "title": "CAM System Overview",
+    "description": "Complete Arbitration Mesh - System Health and Performance Overview",
+    "tags": ["cam", "arbitration", "overview"],
+    "timezone": "browser",
+    "schemaVersion": 30,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": [
+        {
+          "name": "instance",
+          "type": "query",
+          "query": "label_values(cam_up, instance)",
+          "refresh": 1,
+          "multi": true,
+          "includeAll": true,
+          "allValue": ".*"
+        },
+        {
+          "name": "mesh_id",
+          "type": "query",
+          "query": "label_values(cam_mesh_size, mesh_id)",
+          "refresh": 1,
+          "multi": false,
+          "includeAll": false
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "System Health Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "cam_up{instance=~\"$instance\"}",
+            "legendFormat": "{{instance}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "DOWN",
+                    "color": "red"
+                  },
+                  "1": {
+                    "text": "UP",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Mesh Size & Connectivity",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "cam_mesh_size{mesh_id=~\"$mesh_id\"}",
+            "legendFormat": "Active Nodes"
+          },
+          {
+            "expr": "cam_mesh_connectivity_score{mesh_id=~\"$mesh_id\"}",
+            "legendFormat": "Connectivity Score"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 50
+                },
+                {
+                  "color": "green",
+                  "value": 80
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Request Processing Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(cam_requests_total{instance=~\"$instance\"}[5m])",
+            "legendFormat": "{{instance}} - {{status}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Requests/sec",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "Arbitration Response Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(cam_arbitration_duration_seconds_bucket{instance=~\"$instance\"}[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(cam_arbitration_duration_seconds_bucket{instance=~\"$instance\"}[5m]))",
+            "legendFormat": "50th percentile"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Seconds",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": 5,
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(cam_requests_total{status=~\"4..|5..\",instance=~\"$instance\"}[5m]) / rate(cam_requests_total{instance=~\"$instance\"}[5m]) * 100",
+            "legendFormat": "Error Rate %"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Percentage",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 5,
+            "colorMode": "critical",
+            "op": "gt"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 6,
+        "title": "Consensus Algorithm Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "cam_consensus_rounds{algorithm=\"raft\",instance=~\"$instance\"}",
+            "legendFormat": "Raft Rounds"
+          },
+          {
+            "expr": "cam_consensus_rounds{algorithm=\"pbft\",instance=~\"$instance\"}",
+            "legendFormat": "PBFT Rounds"
+          },
+          {
+            "expr": "cam_consensus_time_seconds{instance=~\"$instance\"}",
+            "legendFormat": "Consensus Time"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        }
+      },
+      {
+        "id": 7,
+        "title": "Agent Collaboration Activity",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "cam_agent_collaborations_total{instance=~\"$instance\"}",
+            "legendFormat": "Active Collaborations"
+          },
+          {
+            "expr": "rate(cam_agent_messages_total{instance=~\"$instance\"}[5m])",
+            "legendFormat": "Messages/sec"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 24
+        }
+      },
+      {
+        "id": 8,
+        "title": "Resource Utilization",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "cam_memory_usage_bytes{instance=~\"$instance\"} / cam_memory_limit_bytes{instance=~\"$instance\"} * 100",
+            "legendFormat": "Memory Usage %"
+          },
+          {
+            "expr": "rate(cam_cpu_usage_seconds_total{instance=~\"$instance\"}[5m]) * 100",
+            "legendFormat": "CPU Usage %"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Percentage",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 24
+        }
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": "prometheus",
+          "enable": true,
+          "expr": "changes(cam_build_info[1h]) > 0",
+          "iconColor": "blue",
+          "textFormat": "Deployment"
+        }
+      ]
+    }
+  }
+}

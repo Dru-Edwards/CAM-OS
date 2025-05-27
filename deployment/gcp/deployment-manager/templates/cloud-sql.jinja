@@ -1,0 +1,55 @@
+{% set name = properties.name %}
+{% set region = properties.region %}
+
+resources:
+# Cloud SQL Instance
+- name: {{ name }}
+  type: sqladmin.v1beta4.instance
+  properties:
+    name: {{ name }}
+    region: {{ region }}
+    databaseVersion: {{ properties.version }}
+    settings:
+      tier: {{ properties.tier }}
+      dataDiskSizeGb: {{ properties.diskSize }}
+      dataDiskType: SSD
+      storageAutoResize: true
+      storageAutoResizeLimit: {{ properties.diskSize * 10 }}
+      availabilityType: {% if properties.highAvailability %}REGIONAL{% else %}ZONAL{% endif %}
+      backupConfiguration:
+        enabled: {{ properties.backupEnabled }}
+        pointInTimeRecoveryEnabled: {{ properties.pointInTimeRecoveryEnabled }}
+        startTime: "03:00"
+        backupRetentionSettings:
+          retainedBackups: {% if properties.highAvailability %}30{% else %}7{% endif %}
+          retentionUnit: COUNT
+      maintenanceWindow:
+        day: {{ properties.maintenanceWindow.day }}
+        hour: {{ properties.maintenanceWindow.hour }}
+      databaseFlags:
+      {% for flag in properties.flags %}
+      - name: {{ flag.name }}
+        value: "{{ flag.value }}"
+      {% endfor %}
+      ipConfiguration:
+        ipv4Enabled: false
+        privateNetwork: {{ properties.network }}
+        authorizedNetworks: {{ properties.authorizedNetworks }}
+        requireSsl: true
+      deletionProtectionEnabled: {{ properties.deletionProtection }}
+
+# Root user password
+- name: {{ name }}-root-user
+  type: sqladmin.v1beta4.user
+  properties:
+    name: postgres
+    instance: $(ref.{{ name }}.name)
+    password: {{ properties.rootPassword | default('') }}
+
+outputs:
+- name: connectionName
+  value: $(ref.{{ name }}.connectionName)
+- name: ipAddress
+  value: $(ref.{{ name }}.ipAddresses[0].ipAddress)
+- name: instanceName
+  value: $(ref.{{ name }}.name)

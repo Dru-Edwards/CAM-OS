@@ -1,0 +1,143 @@
+1. Get the application URL by running these commands:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "cam-chart.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "cam-chart.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "cam-chart.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "cam-chart.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- end }}
+
+2. Check the deployment status:
+  kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}"
+
+3. View application logs:
+  kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "cam-chart.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+{{- if .Values.metrics.enabled }}
+
+4. Access metrics:
+{{- if .Values.ingress.enabled }}
+  {{- range $host := .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ $.Values.metrics.path }}
+  {{- end }}
+{{- else }}
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "cam-chart.fullname" . }}-metrics {{ .Values.metrics.port }}:{{ .Values.metrics.port }}
+  echo "Visit http://127.0.0.1:{{ .Values.metrics.port }}{{ .Values.metrics.path }} to view metrics"
+{{- end }}
+{{- end }}
+
+{{- if .Values.grpc.enabled }}
+
+5. Connect to gRPC service:
+{{- if .Values.grpc.ingress.enabled }}
+  {{- range $host := .Values.grpc.ingress.hosts }}
+  grpc://{{ $host.host }}:{{ if $.Values.grpc.ingress.tls }}443{{ else }}80{{ end }}
+  {{- end }}
+{{- else }}
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "cam-chart.fullname" . }}-grpc {{ .Values.grpc.port }}:{{ .Values.grpc.port }}
+  echo "gRPC service available at localhost:{{ .Values.grpc.port }}"
+{{- end }}
+{{- end }}
+
+{{- if .Values.tests.enabled }}
+
+6. Run application tests:
+  helm test {{ .Release.Name }} --namespace {{ .Release.Namespace }}
+{{- end }}
+
+7. CAM Mesh Information:
+  - Mesh ID: {{ .Values.cam.meshId }}
+  - Node Type: {{ .Values.cam.nodeType }}
+  - Consensus Algorithm: {{ .Values.cam.consensus.algorithm }}
+  - Max Participants: {{ .Values.cam.arbitration.maxParticipants }}
+
+{{- if .Values.postgresql.enabled }}
+
+8. Database Information:
+  - Type: PostgreSQL
+  - Database: {{ .Values.postgresql.auth.database }}
+  - Username: {{ .Values.postgresql.auth.username }}
+  
+  Connect to database:
+  kubectl --namespace {{ .Release.Namespace }} exec -it deployment/{{ .Release.Name }}-postgresql -- psql -U {{ .Values.postgresql.auth.username }} -d {{ .Values.postgresql.auth.database }}
+{{- end }}
+
+{{- if .Values.redis.enabled }}
+
+9. Cache Information:
+  - Type: Redis
+  
+  Connect to Redis:
+  kubectl --namespace {{ .Release.Namespace }} exec -it deployment/{{ .Release.Name }}-redis-master -- redis-cli
+{{- end }}
+
+{{- if .Values.monitoring.enabled }}
+
+10. Monitoring:
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+  - Prometheus ServiceMonitor: Enabled
+{{- end }}
+{{- if .Values.monitoring.prometheusRule.enabled }}
+  - Prometheus Rules: Enabled
+{{- end }}
+{{- end }}
+
+{{- if .Values.autoscaling.enabled }}
+
+11. Auto-scaling:
+  - HPA: Enabled ({{ .Values.autoscaling.minReplicas }}-{{ .Values.autoscaling.maxReplicas }} replicas)
+{{- if .Values.autoscaling.targetCPUUtilizationPercentage }}
+  - CPU Target: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}%
+{{- end }}
+{{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
+  - Memory Target: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}%
+{{- end }}
+{{- end }}
+
+{{- if .Values.persistence.enabled }}
+
+12. Persistent Storage:
+  - PVC: {{ include "cam-chart.fullname" . }}-pvc ({{ .Values.persistence.size }})
+  - Mount Path: {{ .Values.persistence.mountPath }}
+{{- end }}
+
+---
+
+🚀 Complete Arbitration Mesh (CAM) has been deployed successfully!
+
+For more information about CAM:
+- Documentation: https://github.com/cam-protocol/Complete-Arbitration-Mesh-Final/docs
+- API Reference: {{ if .Values.ingress.enabled }}{{ range $host := .Values.ingress.hosts }}http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}/docs{{ end }}{{ else }}Use port-forward to access /docs endpoint{{ end }}
+- Health Check: {{ if .Values.ingress.enabled }}{{ range $host := .Values.ingress.hosts }}http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}/health{{ end }}{{ else }}Use port-forward to access /health endpoint{{ end }}
+
+{{- if .Values.cam.meshId }}
+Your CAM Mesh ID: {{ .Values.cam.meshId }}
+{{- else }}
+⚠️  No Mesh ID specified. Set cam.meshId in values.yaml for production use.
+{{- end }}
+
+{{- if not .Values.security.jwt.secret }}
+⚠️  Default JWT secret is being used. Set security.jwt.secret for production use.
+{{- end }}
+
+{{- if and .Values.postgresql.enabled (eq .Values.postgresql.auth.password "changeme") }}
+⚠️  Default database password is being used. Change postgresql.auth.password for production use.
+{{- end }}
+
+{{- if and .Values.redis.enabled (eq .Values.redis.auth.password "changeme") }}
+⚠️  Default Redis password is being used. Change redis.auth.password for production use.
+{{- end }}

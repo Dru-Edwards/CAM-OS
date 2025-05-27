@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cam-chart.fullname" . }}-config
+  labels:
+    {{- include "cam-chart.labels" . | nindent 4 }}
+data:
+  # Application Configuration
+  APP_NAME: {{ .Chart.Name | quote }}
+  APP_VERSION: {{ .Chart.AppVersion | quote }}
+  ENVIRONMENT: {{ .Values.app.environment | quote }}
+  
+  # Arbitration Mesh Configuration
+  CAM_MESH_ID: {{ .Values.cam.meshId | quote }}
+  CAM_NODE_TYPE: {{ .Values.cam.nodeType | quote }}
+  CAM_CONSENSUS_ALGORITHM: {{ .Values.cam.consensus.algorithm | quote }}
+  CAM_CONSENSUS_THRESHOLD: {{ .Values.cam.consensus.threshold | quote }}
+  CAM_ARBITRATION_TIMEOUT: {{ .Values.cam.arbitration.timeout | quote }}
+  CAM_MAX_PARTICIPANTS: {{ .Values.cam.arbitration.maxParticipants | quote }}
+  
+  # Agent Configuration
+  AGENT_DISCOVERY_ENABLED: {{ .Values.agents.discovery.enabled | quote }}
+  AGENT_DISCOVERY_INTERVAL: {{ .Values.agents.discovery.interval | quote }}
+  AGENT_COLLABORATION_MODE: {{ .Values.agents.collaboration.mode | quote }}
+  AGENT_MAX_CONCURRENT: {{ .Values.agents.maxConcurrent | quote }}
+  
+  # Network Configuration
+  NETWORK_MESH_PROTOCOL: {{ .Values.network.protocol | quote }}
+  NETWORK_ENCRYPTION_ENABLED: {{ .Values.network.encryption.enabled | quote }}
+  NETWORK_COMPRESSION_ENABLED: {{ .Values.network.compression.enabled | quote }}
+  NETWORK_HEARTBEAT_INTERVAL: {{ .Values.network.heartbeat.interval | quote }}
+  
+  # Performance Configuration
+  PERFORMANCE_CACHE_SIZE: {{ .Values.performance.cacheSize | quote }}
+  PERFORMANCE_WORKER_THREADS: {{ .Values.performance.workerThreads | quote }}
+  PERFORMANCE_BATCH_SIZE: {{ .Values.performance.batchSize | quote }}
+  PERFORMANCE_OPTIMIZATION_LEVEL: {{ .Values.performance.optimizationLevel | quote }}
+  
+  # Monitoring Configuration
+  {{- if .Values.monitoring.enabled }}
+  MONITORING_ENABLED: "true"
+  MONITORING_METRICS_INTERVAL: {{ .Values.monitoring.metrics.interval | quote }}
+  MONITORING_HEALTH_CHECK_INTERVAL: {{ .Values.monitoring.healthCheck.interval | quote }}
+  MONITORING_ALERT_THRESHOLD: {{ .Values.monitoring.alerting.threshold | quote }}
+  {{- else }}
+  MONITORING_ENABLED: "false"
+  {{- end }}
+  
+  # Tracing Configuration
+  {{- if .Values.tracing.enabled }}
+  TRACING_ENABLED: "true"
+  TRACING_SAMPLING_RATE: {{ .Values.tracing.samplingRate | quote }}
+  TRACING_JAEGER_ENDPOINT: {{ .Values.tracing.jaeger.endpoint | quote }}
+  {{- else }}
+  TRACING_ENABLED: "false"
+  {{- end }}
+  
+  # Security Configuration
+  SECURITY_JWT_ALGORITHM: {{ .Values.security.jwt.algorithm | quote }}
+  SECURITY_JWT_EXPIRES_IN: {{ .Values.security.jwt.expiresIn | quote }}
+  SECURITY_RATE_LIMIT_WINDOW: {{ .Values.security.rateLimit.windowMs | quote }}
+  SECURITY_RATE_LIMIT_MAX: {{ .Values.security.rateLimit.max | quote }}
+  SECURITY_CORS_ENABLED: {{ .Values.security.cors.enabled | quote }}
+  
+  # Database Configuration
+  {{- if .Values.postgresql.enabled }}
+  DATABASE_TYPE: "postgresql"
+  DATABASE_POOL_MIN: {{ .Values.database.pool.min | quote }}
+  DATABASE_POOL_MAX: {{ .Values.database.pool.max | quote }}
+  DATABASE_TIMEOUT: {{ .Values.database.timeout | quote }}
+  DATABASE_SSL_ENABLED: {{ .Values.database.ssl.enabled | quote }}
+  {{- end }}
+  
+  # Cache Configuration
+  {{- if .Values.redis.enabled }}
+  CACHE_TYPE: "redis"
+  CACHE_TTL_DEFAULT: {{ .Values.cache.ttl.default | quote }}
+  CACHE_TTL_SESSION: {{ .Values.cache.ttl.session | quote }}
+  CACHE_TTL_ARBITRATION: {{ .Values.cache.ttl.arbitration | quote }}
+  {{- end }}
+  
+  # Additional Environment Variables
+  {{- range $key, $value := .Values.app.config }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}

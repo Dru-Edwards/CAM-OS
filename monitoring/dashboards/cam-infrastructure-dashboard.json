@@ -1,0 +1,310 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "cam-infrastructure",
+    "title": "CAM Infrastructure Monitoring",
+    "description": "Infrastructure and resource utilization monitoring for CAM deployment",
+    "tags": ["cam", "infrastructure", "resources"],
+    "timezone": "browser",
+    "schemaVersion": 30,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "node",
+          "type": "query",
+          "query": "label_values(node_uname_info, nodename)",
+          "refresh": 1,
+          "multi": true,
+          "includeAll": true
+        },
+        {
+          "name": "pod",
+          "type": "query",
+          "query": "label_values(kube_pod_info{namespace=\"cam-system\"}, pod)",
+          "refresh": 1,
+          "multi": true,
+          "includeAll": true
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Cluster Resource Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count(up{job=\"kubernetes-nodes\"})",
+            "legendFormat": "Total Nodes"
+          },
+          {
+            "expr": "count(kube_pod_info{namespace=\"cam-system\"})",
+            "legendFormat": "CAM Pods"
+          },
+          {
+            "expr": "sum(kube_node_status_allocatable{resource=\"cpu\",node=~\"$node\"})",
+            "legendFormat": "Total CPU Cores"
+          },
+          {
+            "expr": "sum(kube_node_status_allocatable{resource=\"memory\",node=~\"$node\"}) / 1024 / 1024 / 1024",
+            "legendFormat": "Total Memory (GB)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        },
+        "gridPos": {
+          "h": 6,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Node CPU Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\",instance=~\"$node\"}[5m])) * 100)",
+            "legendFormat": "{{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Percentage",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 80,
+            "colorMode": "critical",
+            "op": "gt"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 6
+        }
+      },
+      {
+        "id": 3,
+        "title": "Node Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "(1 - (node_memory_MemAvailable_bytes{instance=~\"$node\"} / node_memory_MemTotal_bytes{instance=~\"$node\"})) * 100",
+            "legendFormat": "{{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Percentage",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 90,
+            "colorMode": "critical",
+            "op": "gt"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 6
+        }
+      },
+      {
+        "id": 4,
+        "title": "Pod Resource Requests vs Limits",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(kube_pod_container_resource_requests{namespace=\"cam-system\",resource=\"cpu\",pod=~\"$pod\"}) by (pod)",
+            "legendFormat": "{{pod}} - CPU Requests"
+          },
+          {
+            "expr": "sum(kube_pod_container_resource_limits{namespace=\"cam-system\",resource=\"cpu\",pod=~\"$pod\"}) by (pod)",
+            "legendFormat": "{{pod}} - CPU Limits"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "CPU Cores",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 14
+        }
+      },
+      {
+        "id": 5,
+        "title": "Pod Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(container_memory_working_set_bytes{namespace=\"cam-system\",pod=~\"$pod\"}) by (pod) / 1024 / 1024",
+            "legendFormat": "{{pod}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Memory (MB)",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 14
+        }
+      },
+      {
+        "id": 6,
+        "title": "Network I/O",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(container_network_receive_bytes_total{namespace=\"cam-system\",pod=~\"$pod\"}[5m]) / 1024 / 1024",
+            "legendFormat": "{{pod}} - RX (MB/s)"
+          },
+          {
+            "expr": "rate(container_network_transmit_bytes_total{namespace=\"cam-system\",pod=~\"$pod\"}[5m]) / 1024 / 1024",
+            "legendFormat": "{{pod}} - TX (MB/s)"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "MB/s",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 22
+        }
+      },
+      {
+        "id": 7,
+        "title": "Disk I/O",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(container_fs_reads_bytes_total{namespace=\"cam-system\",pod=~\"$pod\"}[5m]) / 1024 / 1024",
+            "legendFormat": "{{pod}} - Read (MB/s)"
+          },
+          {
+            "expr": "rate(container_fs_writes_bytes_total{namespace=\"cam-system\",pod=~\"$pod\"}[5m]) / 1024 / 1024",
+            "legendFormat": "{{pod}} - Write (MB/s)"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "MB/s",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 22
+        }
+      },
+      {
+        "id": 8,
+        "title": "Pod Status",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "kube_pod_status_phase{namespace=\"cam-system\",pod=~\"$pod\"}",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "color-background"
+            },
+            "mappings": [
+              {
+                "options": {
+                  "1": {
+                    "text": "Running",
+                    "color": "green"
+                  },
+                  "0": {
+                    "text": "Not Running",
+                    "color": "red"
+                  }
+                },
+                "type": "value"
+              }
+            ]
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 30
+        }
+      },
+      {
+        "id": 9,
+        "title": "Persistent Volume Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "(kubelet_volume_stats_used_bytes{namespace=\"cam-system\"} / kubelet_volume_stats_capacity_bytes{namespace=\"cam-system\"}) * 100",
+            "legendFormat": "{{persistentvolumeclaim}} - Usage %"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Percentage",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 85,
+            "colorMode": "critical",
+            "op": "gt"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 30
+        }
+      }
+    ]
+  }
+}

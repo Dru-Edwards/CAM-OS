@@ -1,0 +1,846 @@
+openapi: 3.0.3
+info:
+  title: Complete Arbitration Mesh API
+  description: |
+    The Complete Arbitration Mesh (CAM) API provides intelligent orchestration and arbitration
+    capabilities for multi-AI model systems. CAM automatically selects the optimal AI model
+    for each request based on performance metrics, cost optimization, and quality requirements.
+    
+    ## Features
+    - Intelligent model selection and routing
+    - Real-time performance monitoring
+    - Cost optimization algorithms
+    - Quality assurance and validation
+    - Multi-cloud deployment support
+    - Enterprise-grade security and compliance
+    
+    ## Authentication
+    All API endpoints require authentication using API keys. Include your API key in the
+    `Authorization` header using the Bearer token format.
+    
+    ## Rate Limiting
+    API requests are rate-limited based on your subscription tier:
+    - Community: 1,000 requests/hour
+    - SMB-Pro: 10,000 requests/hour
+    - Enterprise-Elite: 100,000 requests/hour
+    
+  version: 2.0.0
+  contact:
+    name: CAM API Support
+    url: https://cam-platform.io/support
+    email: api-support@cam-platform.io
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: https://cam-platform.io/terms
+
+servers:
+  - url: https://api.cam-platform.io/v2
+    description: Production server
+  - url: https://staging-api.cam-platform.io/v2
+    description: Staging server
+  - url: http://localhost:5000/api/v2
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      summary: Health Check
+      description: Check the health and status of the CAM platform
+      operationId: healthCheck
+      tags:
+        - System
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: System is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /process:
+    post:
+      summary: Process Request
+      description: |
+        Submit a request for processing through the CAM arbitration system.
+        The system will automatically select the optimal AI model based on
+        your request characteristics and policy configuration.
+      operationId: processRequest
+      tags:
+        - Core
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessRequest'
+            examples:
+              text_generation:
+                summary: Text Generation Example
+                value:
+                  prompt: "Explain quantum computing in simple terms"
+                  policyId: "cost_effective_content_policy"
+                  parameters:
+                    maxTokens: 500
+                    temperature: 0.7
+              code_generation:
+                summary: Code Generation Example
+                value:
+                  prompt: "Write a Python function to calculate fibonacci numbers"
+                  policyId: "code_quality_policy"
+                  parameters:
+                    language: "python"
+                    includeTests: true
+      responses:
+        '200':
+          description: Request processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /policies:
+    get:
+      summary: List Policies
+      description: Retrieve a list of available arbitration policies
+      operationId: listPolicies
+      tags:
+        - Policies
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of policies to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of policies to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: category
+          in: query
+          description: Filter policies by category
+          schema:
+            type: string
+            enum: [cost_optimization, quality_first, speed_priority, balanced]
+      responses:
+        '200':
+          description: List of policies retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoliciesResponse'
+
+    post:
+      summary: Create Policy
+      description: Create a new arbitration policy
+      operationId: createPolicy
+      tags:
+        - Policies
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePolicyRequest'
+      responses:
+        '201':
+          description: Policy created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '400':
+          description: Invalid policy configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /policies/{policyId}:
+    get:
+      summary: Get Policy
+      description: Retrieve details of a specific policy
+      operationId: getPolicy
+      tags:
+        - Policies
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          description: Unique identifier of the policy
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Policy details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '404':
+          description: Policy not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update Policy
+      description: Update an existing policy
+      operationId: updatePolicy
+      tags:
+        - Policies
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          description: Unique identifier of the policy
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePolicyRequest'
+      responses:
+        '200':
+          description: Policy updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '404':
+          description: Policy not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete Policy
+      description: Delete a policy
+      operationId: deletePolicy
+      tags:
+        - Policies
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          description: Unique identifier of the policy
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Policy deleted successfully
+        '404':
+          description: Policy not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /models:
+    get:
+      summary: List Models
+      description: Retrieve a list of available AI models
+      operationId: listModels
+      tags:
+        - Models
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: provider
+          in: query
+          description: Filter models by provider
+          schema:
+            type: string
+            enum: [openai, anthropic, google, cohere, local]
+        - name: capability
+          in: query
+          description: Filter models by capability
+          schema:
+            type: string
+            enum: [text_generation, code_generation, image_generation, embeddings]
+      responses:
+        '200':
+          description: List of models retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelsResponse'
+
+  /metrics:
+    get:
+      summary: Get Metrics
+      description: Retrieve performance and usage metrics
+      operationId: getMetrics
+      tags:
+        - Monitoring
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startTime
+          in: query
+          description: Start time for metrics (ISO 8601 format)
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          description: End time for metrics (ISO 8601 format)
+          schema:
+            type: string
+            format: date-time
+        - name: aggregation
+          in: query
+          description: Aggregation level for metrics
+          schema:
+            type: string
+            enum: [hourly, daily, weekly]
+            default: hourly
+      responses:
+        '200':
+          description: Metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsResponse'
+
+  /audit-logs:
+    get:
+      summary: Get Audit Logs
+      description: Retrieve audit logs for compliance and monitoring
+      operationId: getAuditLogs
+      tags:
+        - Compliance
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startTime
+          in: query
+          description: Start time for logs (ISO 8601 format)
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          description: End time for logs (ISO 8601 format)
+          schema:
+            type: string
+            format: date-time
+        - name: eventType
+          in: query
+          description: Filter by event type
+          schema:
+            type: string
+            enum: [request, policy_change, model_selection, error]
+        - name: limit
+          in: query
+          description: Maximum number of log entries to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+      responses:
+        '200':
+          description: Audit logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogsResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: API key for authentication
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+        services:
+          type: object
+          properties:
+            database:
+              $ref: '#/components/schemas/ServiceStatus'
+            redis:
+              $ref: '#/components/schemas/ServiceStatus'
+            arbitration_engine:
+              $ref: '#/components/schemas/ServiceStatus'
+            model_registry:
+              $ref: '#/components/schemas/ServiceStatus'
+
+    ServiceStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        responseTime:
+          type: number
+          description: Response time in milliseconds
+        lastCheck:
+          type: string
+          format: date-time
+
+    ProcessRequest:
+      type: object
+      required:
+        - prompt
+      properties:
+        prompt:
+          type: string
+          description: Input prompt for processing
+          example: "Explain quantum computing in simple terms"
+        policyId:
+          type: string
+          description: ID of the arbitration policy to use
+          example: "cost_effective_content_policy"
+        parameters:
+          type: object
+          description: Additional parameters for processing
+          properties:
+            maxTokens:
+              type: integer
+              minimum: 1
+              maximum: 4096
+              description: Maximum number of tokens to generate
+            temperature:
+              type: number
+              minimum: 0
+              maximum: 2
+              description: Sampling temperature for generation
+            topP:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Nucleus sampling parameter
+            frequencyPenalty:
+              type: number
+              minimum: -2
+              maximum: 2
+              description: Frequency penalty for repetition
+            presencePenalty:
+              type: number
+              minimum: -2
+              maximum: 2
+              description: Presence penalty for new topics
+        metadata:
+          type: object
+          description: Optional metadata for tracking and analytics
+          additionalProperties: true
+
+    ProcessResponse:
+      type: object
+      properties:
+        requestId:
+          type: string
+          description: Unique identifier for this request
+        content:
+          type: string
+          description: Generated content
+        selectedModel:
+          type: string
+          description: Model that was selected for processing
+        selectionReason:
+          type: string
+          description: Reason for model selection
+        performance:
+          type: object
+          properties:
+            processingTime:
+              type: number
+              description: Processing time in milliseconds
+            tokensUsed:
+              type: integer
+              description: Number of tokens consumed
+            cost:
+              type: number
+              description: Cost of the request in USD
+        quality:
+          type: object
+          properties:
+            score:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Quality score of the response
+            confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Confidence in the quality assessment
+        timestamp:
+          type: string
+          format: date-time
+
+    Policy:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the policy
+        name:
+          type: string
+          description: Human-readable name of the policy
+        description:
+          type: string
+          description: Description of the policy
+        category:
+          type: string
+          enum: [cost_optimization, quality_first, speed_priority, balanced]
+        configuration:
+          type: object
+          properties:
+            costWeight:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Weight for cost optimization
+            qualityWeight:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Weight for quality optimization
+            speedWeight:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Weight for speed optimization
+            modelPreferences:
+              type: array
+              items:
+                type: string
+              description: Preferred models in order of preference
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+
+    CreatePolicyRequest:
+      type: object
+      required:
+        - name
+        - category
+        - configuration
+      properties:
+        name:
+          type: string
+          description: Name of the policy
+        description:
+          type: string
+          description: Description of the policy
+        category:
+          type: string
+          enum: [cost_optimization, quality_first, speed_priority, balanced]
+        configuration:
+          type: object
+          properties:
+            costWeight:
+              type: number
+              minimum: 0
+              maximum: 1
+            qualityWeight:
+              type: number
+              minimum: 0
+              maximum: 1
+            speedWeight:
+              type: number
+              minimum: 0
+              maximum: 1
+            modelPreferences:
+              type: array
+              items:
+                type: string
+
+    UpdatePolicyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [cost_optimization, quality_first, speed_priority, balanced]
+        configuration:
+          type: object
+          properties:
+            costWeight:
+              type: number
+              minimum: 0
+              maximum: 1
+            qualityWeight:
+              type: number
+              minimum: 0
+              maximum: 1
+            speedWeight:
+              type: number
+              minimum: 0
+              maximum: 1
+            modelPreferences:
+              type: array
+              items:
+                type: string
+
+    PoliciesResponse:
+      type: object
+      properties:
+        policies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Policy'
+        total:
+          type: integer
+          description: Total number of policies
+        limit:
+          type: integer
+          description: Maximum number of policies returned
+        offset:
+          type: integer
+          description: Number of policies skipped
+
+    Model:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the model
+        name:
+          type: string
+          description: Human-readable name of the model
+        provider:
+          type: string
+          enum: [openai, anthropic, google, cohere, local]
+        capabilities:
+          type: array
+          items:
+            type: string
+            enum: [text_generation, code_generation, image_generation, embeddings]
+        performance:
+          type: object
+          properties:
+            averageLatency:
+              type: number
+              description: Average response time in milliseconds
+            tokensPerSecond:
+              type: number
+              description: Processing speed in tokens per second
+            availability:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Availability percentage
+        pricing:
+          type: object
+          properties:
+            inputTokenCost:
+              type: number
+              description: Cost per input token in USD
+            outputTokenCost:
+              type: number
+              description: Cost per output token in USD
+        limits:
+          type: object
+          properties:
+            maxTokens:
+              type: integer
+              description: Maximum tokens per request
+            maxRequestsPerMinute:
+              type: integer
+              description: Rate limit per minute
+
+    ModelsResponse:
+      type: object
+      properties:
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/Model'
+        total:
+          type: integer
+          description: Total number of models
+
+    MetricsResponse:
+      type: object
+      properties:
+        timeRange:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+        usage:
+          type: object
+          properties:
+            totalRequests:
+              type: integer
+            successfulRequests:
+              type: integer
+            failedRequests:
+              type: integer
+            averageResponseTime:
+              type: number
+            totalTokensProcessed:
+              type: integer
+            totalCost:
+              type: number
+        performance:
+          type: object
+          properties:
+            modelSelection:
+              type: object
+              additionalProperties:
+                type: integer
+              description: Count of requests by selected model
+            averageQualityScore:
+              type: number
+            costSavings:
+              type: number
+              description: Estimated cost savings from optimization
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the log entry
+        timestamp:
+          type: string
+          format: date-time
+        eventType:
+          type: string
+          enum: [request, policy_change, model_selection, error]
+        userId:
+          type: string
+          description: ID of the user who initiated the action
+        details:
+          type: object
+          description: Event-specific details
+          additionalProperties: true
+        ipAddress:
+          type: string
+          description: IP address of the request origin
+        userAgent:
+          type: string
+          description: User agent string
+
+    AuditLogsResponse:
+      type: object
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+        total:
+          type: integer
+          description: Total number of log entries
+        hasMore:
+          type: boolean
+          description: Whether there are more logs available
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: Error code
+            message:
+              type: string
+              description: Human-readable error message
+            details:
+              type: object
+              description: Additional error details
+              additionalProperties: true
+        requestId:
+          type: string
+          description: Unique identifier for the failed request
+        timestamp:
+          type: string
+          format: date-time
+
+tags:
+  - name: System
+    description: System health and status endpoints
+  - name: Core
+    description: Core arbitration and processing functionality
+  - name: Policies
+    description: Arbitration policy management
+  - name: Models
+    description: AI model information and management
+  - name: Monitoring
+    description: Performance and usage monitoring
+  - name: Compliance
+    description: Audit logs and compliance features
+
+externalDocs:
+  description: Complete Arbitration Mesh Documentation
+  url: https://docs.cam-platform.io

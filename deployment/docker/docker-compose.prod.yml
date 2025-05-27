@@ -1,0 +1,210 @@
+version: '3.8'
+
+services:
+  # CAM Protocol Application (Multiple instances for high availability)
+  cam-app-1:
+    image: ghcr.io/cam-protocol/complete-arbitration-mesh:latest
+    container_name: cam-arbitration-mesh-1
+    environment:
+      - NODE_ENV=production
+      - CAM_LOG_LEVEL=info
+      - CAM_REDIS_URL=redis://redis:6379
+      - CAM_DATABASE_URL=postgresql://cam_user:${CAM_DB_PASSWORD}@postgres:5432/cam_db
+      - CAM_JWT_SECRET=${CAM_JWT_SECRET}
+      - CAM_API_RATE_LIMIT=10000
+      - CAM_INSTANCE_ID=cam-1
+    volumes:
+      - cam-logs:/app/logs
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - cam-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  cam-app-2:
+    image: ghcr.io/cam-protocol/complete-arbitration-mesh:latest
+    container_name: cam-arbitration-mesh-2
+    environment:
+      - NODE_ENV=production
+      - CAM_LOG_LEVEL=info
+      - CAM_REDIS_URL=redis://redis:6379
+      - CAM_DATABASE_URL=postgresql://cam_user:${CAM_DB_PASSWORD}@postgres:5432/cam_db
+      - CAM_JWT_SECRET=${CAM_JWT_SECRET}
+      - CAM_API_RATE_LIMIT=10000
+      - CAM_INSTANCE_ID=cam-2
+    volumes:
+      - cam-logs:/app/logs
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - cam-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  # Redis Cluster for high availability
+  redis-master:
+    image: redis:7-alpine
+    container_name: cam-redis-master
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-master-data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - cam-network
+    restart: unless-stopped
+    command: redis-server /usr/local/etc/redis/redis.conf
+
+  redis-replica:
+    image: redis:7-alpine
+    container_name: cam-redis-replica
+    volumes:
+      - redis-replica-data:/data
+    networks:
+      - cam-network
+    restart: unless-stopped
+    command: redis-server --replicaof redis-master 6379
+
+  # PostgreSQL with replication
+  postgres-master:
+    image: postgres:15-alpine
+    container_name: cam-postgres-master
+    environment:
+      - POSTGRES_USER=cam_user
+      - POSTGRES_PASSWORD=${CAM_DB_PASSWORD}
+      - POSTGRES_DB=cam_db
+      - POSTGRES_REPLICATION_USER=replicator
+      - POSTGRES_REPLICATION_PASSWORD=${CAM_REPLICATION_PASSWORD}
+    volumes:
+      - postgres-master-data:/var/lib/postgresql/data
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    networks:
+      - cam-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+
+  # Nginx Load Balancer with SSL
+  nginx:
+    image: nginx:alpine
+    container_name: cam-nginx-lb
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - cam-logs:/var/log/nginx
+    depends_on:
+      - cam-app-1
+      - cam-app-2
+    networks:
+      - cam-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.2'
+
+  # Prometheus for monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: cam-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.prod.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/rules:/etc/prometheus/rules
+      - prometheus-data:/prometheus
+    networks:
+      - cam-network
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: cam-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - cam-network
+    restart: unless-stopped
+
+  # Log aggregation with Fluent Bit
+  fluent-bit:
+    image: fluent/fluent-bit:latest
+    container_name: cam-fluent-bit
+    volumes:
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+      - cam-logs:/var/log
+    networks:
+      - cam-network
+    restart: unless-stopped
+
+  # Backup service
+  backup:
+    image: postgres:15-alpine
+    container_name: cam-backup
+    environment:
+      - PGPASSWORD=${CAM_DB_PASSWORD}
+    volumes:
+      - backup-data:/backups
+      - ./scripts/backup.sh:/backup.sh
+    networks:
+      - cam-network
+    restart: "no"
+    entrypoint: ["sh", "/backup.sh"]
+
+volumes:
+  redis-master-data:
+  redis-replica-data:
+  postgres-master-data:
+  prometheus-data:
+  grafana-data:
+  cam-logs:
+  backup-data:
+
+networks:
+  cam-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

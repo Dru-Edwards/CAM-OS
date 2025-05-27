@@ -1,0 +1,35 @@
+# Development Environment Configuration
+env:
+  name: dev
+  properties:
+    projectId: cam-arbitration-dev
+    region: us-central1
+    domainName: dev.cam-arbitration.com
+    sslEnabled: true
+    
+    database:
+      tier: db-f1-micro
+      diskSize: 10
+      highAvailability: false
+      deletionProtection: false
+    
+    redis:
+      tier: BASIC
+      memorySizeGb: 1
+    
+    cloudRun:
+      imageTag: develop
+      scaling:
+        minInstances: 0
+        maxInstances: 5
+      resources:
+        cpu: "1"
+        memory: 512Mi
+      logLevel: debug
+    
+    github:
+      owner: your-org
+      repo: Complete-Arbitration-Mesh-Final
+    
+    monitoring:
+      alertEmail: dev-alerts@your-domain.com

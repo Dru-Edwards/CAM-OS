@@ -1,0 +1,67 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "created_date": "2025-05-23",
+    "environment": "production_baseline",
+    "test_duration_minutes": 30,
+    "description": "JSON baseline performance data for automated comparison"
+  },
+  "baseline_metrics": {
+    "http_req_duration": {
+      "avg": 145.2,
+      "min": 23.1,
+      "max": 891.7,
+      "p50": 128.4,
+      "p95": 287.9,
+      "p99": 456.3,
+      "count": 15672
+    },
+    "http_req_failed": {
+      "rate": 0.0032,
+      "count": 50
+    },
+    "arbitration_decision_time": {
+      "avg": 89.6,
+      "min": 15.2,
+      "max": 324.8,
+      "p50": 78.3,
+      "p95": 156.7,
+      "p99": 243.1,
+      "count": 5224
+    },
+    "provider_selection_accuracy": {
+      "rate": 0.947,
+      "total_selections": 5224,
+      "successful_selections": 4946
+    },
+    "cost_optimization_rate": {
+      "rate": 0.823,
+      "total_optimizations": 5224,
+      "successful_optimizations": 4299,
+      "average_savings_percent": 18.7
+    },
+    "agent_collaboration_efficiency": {
+      "rate": 0.891,
+      "total_collaborations": 1247,
+      "successful_collaborations": 1111,
+      "average_sync_time_ms": 456.2
+    }
+  },
+  "performance_targets": {
+    "community_tier": {
+      "p95_response_time_ms": 500,
+      "max_error_rate_percent": 1.0,
+      "min_throughput_rps": 10
+    },
+    "professional_tier": {
+      "p95_response_time_ms": 250,
+      "max_error_rate_percent": 0.5,
+      "min_throughput_rps": 50
+    },
+    "enterprise_tier": {
+      "p95_response_time_ms": 100,
+      "max_error_rate_percent": 0.1,
+      "min_throughput_rps": 200
+    }
+  }
+}

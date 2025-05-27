@@ -1,0 +1,473 @@
+# Complete Arbitration Mesh Helm Chart Values
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# Replica count (overridden by autoscaling if enabled)
+replicaCount: 3
+
+# Image configuration
+image:
+  repository: cam/complete-arbitration-mesh
+  tag: ""  # Defaults to chart appVersion
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# RBAC configuration
+rbac:
+  create: true
+  createCRDPermissions: false
+  createNamespaceRole: true
+  meshCoordination:
+    enabled: true
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 2000
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  nodePort: ""
+  annotations: {}
+  loadBalancerIP: ""
+  loadBalancerSourceRanges: []
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  
+  # Health checks
+  healthcheck:
+    liveness:
+      path: /health
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      path: /ready
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: cam.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: cam-tls
+      hosts:
+        - cam.example.com
+
+# Application environment configuration
+app:
+  nodeEnv: production
+  logLevel: info
+  environment: production
+  env: {}
+  config: {}
+  secrets: {}
+
+# CAM-specific configuration
+cam:
+  meshId: "default-mesh"
+  nodeType: "arbitrator"
+  consensus:
+    algorithm: "raft"
+    threshold: 0.66
+  arbitration:
+    timeout: "30s"
+    maxParticipants: 10
+    minParticipants: 3
+
+# Agent configuration
+agents:
+  discovery:
+    enabled: true
+    interval: "30s"
+  collaboration:
+    mode: "cooperative"
+  maxConcurrent: 5
+
+# Network configuration
+network:
+  protocol: "grpc"
+  encryption:
+    enabled: true
+  compression:
+    enabled: true
+  heartbeat:
+    interval: "10s"
+
+# Performance configuration
+performance:
+  cacheSize: "100MB"
+  workerThreads: 4
+  batchSize: 100
+  optimizationLevel: "high"
+
+# gRPC configuration
+grpc:
+  enabled: true
+  port: 9090
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: false
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/grpc-backend: "true"
+    hosts:
+      - host: grpc.cam.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+# Metrics and monitoring
+metrics:
+  enabled: true
+  port: 9091
+  path: /metrics
+
+monitoring:
+  enabled: true
+  metrics:
+    interval: "30s"
+  healthCheck:
+    interval: "10s"
+  alerting:
+    threshold: 0.9
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+    annotations: {}
+    metricRelabelings: []
+    relabelings: []
+    namespaceSelector: {}
+  prometheusRule:
+    enabled: true
+    labels: {}
+    rules: []
+
+# Tracing configuration
+tracing:
+  enabled: false
+  samplingRate: 0.1
+  jaeger:
+    endpoint: "http://jaeger-collector:14268/api/traces"
+
+# Security configuration
+security:
+  jwt:
+    algorithm: "HS256"
+    secret: "your-super-secret-jwt-key-change-in-production"
+    expiresIn: "24h"
+  encryption:
+    key: "your-encryption-key-32-chars-long"
+  signing:
+    key: "your-signing-key-change-in-production"
+  rateLimit:
+    windowMs: 15000
+    max: 100
+  cors:
+    enabled: true
+
+# TLS configuration
+tls:
+  enabled: false
+  cert: ""
+  key: ""
+  ca: ""
+
+# Database configuration
+database:
+  pool:
+    min: 2
+    max: 10
+  timeout: "30s"
+  ssl:
+    enabled: true
+
+# Cache configuration
+cache:
+  ttl:
+    default: "1h"
+    session: "24h"
+    arbitration: "5m"
+
+# External integrations
+integrations:
+  openai:
+    enabled: false
+    apiKey: ""
+  anthropic:
+    enabled: false
+    apiKey: ""
+  google:
+    enabled: false
+    apiKey: ""
+
+# External services
+external:
+  webhook:
+    enabled: false
+    secret: ""
+  smtp:
+    enabled: false
+    host: ""
+    port: 587
+    username: ""
+    password: ""
+
+# Custom secrets (will be base64 encoded)
+secrets: {}
+
+# Autoscaling configuration
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  customMetrics: []
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      percentPolicy: 25
+      podsPolicy: 2
+      periodSeconds: 60
+      selectPolicy: "Min"
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      percentPolicy: 50
+      podsPolicy: 4
+      periodSeconds: 60
+      selectPolicy: "Max"
+
+# Vertical Pod Autoscaler
+verticalPodAutoscaler:
+  enabled: false
+  updateMode: "Auto"
+  minAllowed:
+    cpu: 100m
+    memory: 128Mi
+  maxAllowed:
+    cpu: 2000m
+    memory: 2Gi
+  controlledResources: ["cpu", "memory"]
+  controlledValues: "RequestsAndLimits"
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# Network Policy
+networkPolicy:
+  enabled: false
+  ingress:
+    enabled: true
+    ingressNamespace: "ingress-nginx"
+    monitoringNamespace: "monitoring"
+    rules: []
+  egress:
+    enabled: true
+    rules: []
+
+# Persistence configuration
+persistence:
+  enabled: true
+  mountPath: /data
+  size: 10Gi
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  annotations: {}
+  selector: {}
+  backup:
+    enabled: true
+    size: 50Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    annotations: {}
+
+# Volume mounts and volumes
+volumeMounts: []
+volumes: []
+
+# Pod annotations
+podAnnotations: {}
+
+# Node selection
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Init job configuration
+initJob:
+  enabled: true
+  image:
+    repository: cam/init
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  command: ["/bin/sh"]
+  args: ["-c", "echo 'Running initialization...' && npm run db:migrate"]
+  env: {}
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Migration job configuration
+migrationJob:
+  enabled: true
+  command: ["npm"]
+  args: ["run", "db:migrate"]
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Backup cron job
+backupCronJob:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 3
+  image:
+    repository: postgres
+    tag: "15-alpine"
+    pullPolicy: IfNotPresent
+  command: ["/bin/sh"]
+  args:
+    - "-c"
+    - |
+      pg_dump $DATABASE_URL > /backup/backup_$(date +%Y%m%d_%H%M%S).sql
+      find /backup -name "backup_*.sql" -mtime +7 -delete
+  env: {}
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Cleanup cron job
+cleanupCronJob:
+  enabled: true
+  schedule: "0 3 * * 0"  # Weekly on Sunday at 3 AM
+  retentionDays: 30
+  command: ["npm"]
+  args: ["run", "cleanup"]
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Testing configuration
+tests:
+  enabled: true
+  timeout: "300"
+  image:
+    repository: curlimages/curl
+    tag: "8.4.0"
+    pullPolicy: IfNotPresent
+  env: {}
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# Dependencies
+postgresql:
+  enabled: true
+  auth:
+    username: cam
+    password: changeme
+    database: cam
+  primary:
+    service:
+      name: postgresql
+      ports:
+        postgresql: 5432
+
+redis:
+  enabled: true
+  auth:
+    password: changeme
+  master:
+    service:
+      name: redis-master
+      ports:
+        redis: 6379
+
+prometheus:
+  enabled: false
+
+grafana:
+  enabled: false

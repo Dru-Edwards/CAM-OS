@@ -1,0 +1,479 @@
+# Default values for cam-arbitration-mesh
+# This is a YAML-formatted file.
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+  
+# Application configuration
+app:
+  name: cam-arbitration-mesh
+  image:
+    registry: docker.io
+    repository: cam/arbitration-mesh
+    tag: "latest"
+    pullPolicy: IfNotPresent
+    pullSecrets: []
+  
+  replicaCount: 3
+  
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  
+  # Auto-scaling configuration
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+  
+  # Container security context
+  containerSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+  
+  # Environment variables
+  env:
+    NODE_ENV: production
+    PORT: "3000"
+    LOG_LEVEL: info
+    METRICS_ENABLED: "true"
+    HEALTH_CHECK_ENABLED: "true"
+  
+  # Environment variables from secrets
+  envFrom:
+    - secretRef:
+        name: cam-app-secrets
+  
+  # Probes
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 3000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+  
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: 3000
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 2
+    successThreshold: 1
+  
+  # Startup probe
+  startupProbe:
+    httpGet:
+      path: /health
+      port: 3000
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 30
+    successThreshold: 1
+  
+  # Node selector and affinity
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - cam-arbitration-mesh
+          topologyKey: kubernetes.io/hostname
+  
+  # Pod annotations
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "3000"
+    prometheus.io/path: "/metrics"
+  
+  # Pod labels
+  podLabels: {}
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+  annotations: {}
+  labels: {}
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: api.cam-arbitration.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: cam-tls-secret
+      hosts:
+        - api.cam-arbitration.com
+
+# PostgreSQL configuration
+postgresql:
+  enabled: true
+  auth:
+    enablePostgresUser: true
+    postgresPassword: ""
+    username: cam_user
+    password: ""
+    database: cam_arbitration
+  architecture: replication
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: ""
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+    initdb:
+      scripts:
+        init.sql: |
+          CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+          CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+          CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
+  readReplicas:
+    replicaCount: 2
+    persistence:
+      enabled: true
+      size: 20Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+# Redis configuration
+redis:
+  enabled: true
+  architecture: replication
+  auth:
+    enabled: true
+    password: ""
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+  replica:
+    replicaCount: 2
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      limits:
+        cpu: 250m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+# External database configuration (when postgresql.enabled = false)
+externalDatabase:
+  host: ""
+  port: 5432
+  username: cam_user
+  database: cam_arbitration
+  existingSecret: ""
+  existingSecretPasswordKey: ""
+
+# External Redis configuration (when redis.enabled = false)
+externalRedis:
+  host: ""
+  port: 6379
+  password: ""
+  existingSecret: ""
+  existingSecretPasswordKey: ""
+
+# Secrets configuration
+secrets:
+  # Create secrets automatically
+  create: true
+  # Existing secret name (if create = false)
+  existingSecret: ""
+  # Secret data (will be base64 encoded automatically)
+  data:
+    database-password: ""
+    redis-password: ""
+    jwt-secret: ""
+    encryption-key: ""
+
+# ConfigMap configuration
+configMap:
+  create: true
+  data:
+    app.yaml: |
+      server:
+        port: 3000
+        host: "0.0.0.0"
+      logging:
+        level: info
+        format: json
+      metrics:
+        enabled: true
+        port: 3000
+        path: /metrics
+      health:
+        enabled: true
+        path: /health
+      consensus:
+        algorithm: raft
+        timeout: 30000
+        heartbeat_interval: 5000
+      arbitration:
+        max_concurrent_cases: 100
+        timeout: 300000
+        evidence_retention_days: 365
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+  automountServiceAccountToken: false
+
+# RBAC configuration
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["configmaps", "secrets"]
+      verbs: ["get", "list", "watch"]
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: nginx-ingress
+      - podSelector:
+          matchLabels:
+            app.kubernetes.io/name: nginx-ingress
+      ports:
+      - protocol: TCP
+        port: 3000
+  egress:
+    - to: []
+      ports:
+      - protocol: TCP
+        port: 5432  # PostgreSQL
+      - protocol: TCP
+        port: 6379  # Redis
+      - protocol: TCP
+        port: 53    # DNS
+      - protocol: UDP
+        port: 53    # DNS
+      - protocol: TCP
+        port: 443   # HTTPS
+      - protocol: TCP
+        port: 80    # HTTP
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  
+  # Prometheus configuration
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+      labels: {}
+      annotations: {}
+    
+    # Prometheus rules
+    prometheusRule:
+      enabled: true
+      labels: {}
+      annotations: {}
+      rules:
+        - alert: CAMHighErrorRate
+          expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High error rate detected"
+            description: "Error rate is {{ $value }} errors per second"
+        
+        - alert: CAMHighLatency
+          expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High latency detected"
+            description: "95th percentile latency is {{ $value }} seconds"
+        
+        - alert: CAMPodCrashLooping
+          expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod is crash looping"
+            description: "Pod {{ $labels.pod }} is restarting frequently"
+  
+  # Grafana configuration
+  grafana:
+    enabled: true
+    dashboards:
+      enabled: true
+      annotations: {}
+      labels: {}
+
+# Backup configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention: "30d"
+  storage:
+    type: s3
+    bucket: ""
+    region: ""
+    accessKey: ""
+    secretKey: ""
+    existingSecret: ""
+
+# Migration jobs
+migration:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: cam/arbitration-mesh
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  activeDeadlineSeconds: 600
+  restartPolicy: Never
+  backoffLimit: 3
+
+# Init containers
+initContainers:
+  waitForDb:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: postgres
+      tag: "14-alpine"
+      pullPolicy: IfNotPresent
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  
+  waitForRedis:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: redis
+      tag: "7-alpine"
+      pullPolicy: IfNotPresent
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+# Pod Security Policy (deprecated in k8s 1.25+)
+podSecurityPolicy:
+  enabled: false
+
+# Pod Security Standards (k8s 1.23+)
+podSecurityStandards:
+  enabled: true
+  enforce: "restricted"
+  audit: "restricted"
+  warn: "restricted"

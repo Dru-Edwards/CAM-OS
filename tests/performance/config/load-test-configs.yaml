@@ -1,0 +1,205 @@
+# Load Testing Configuration for CAM Performance Tests
+
+# Basic Load Test Scenario
+basic_load:
+  name: "Basic Load Test"
+  description: "Standard load test with moderate user base"
+  duration: 300  # 5 minutes
+  users:
+    initial: 1
+    ramp_up: 50
+    steady_state: 50
+    ramp_down: 1
+  ramp_duration: 30  # seconds
+  scenarios:
+    - name: "arbitration_requests"
+      weight: 70
+      requests_per_second: 5
+    - name: "direct_requests"
+      weight: 20
+      requests_per_second: 2
+    - name: "agent_collaboration"
+      weight: 10
+      requests_per_second: 1
+  thresholds:
+    http_req_duration: ["p(95)<200"]
+    http_req_failed: ["rate<0.1"]
+    http_reqs: ["rate>100"]
+
+# Heavy Load Test Scenario
+heavy_load:
+  name: "Heavy Load Test"
+  description: "High load test simulating peak usage"
+  duration: 900  # 15 minutes
+  users:
+    initial: 1
+    ramp_up: 200
+    steady_state: 200
+    ramp_down: 1
+  ramp_duration: 60
+  scenarios:
+    - name: "arbitration_requests"
+      weight: 60
+      requests_per_second: 15
+    - name: "direct_requests"
+      weight: 25
+      requests_per_second: 8
+    - name: "agent_collaboration"
+      weight: 10
+      requests_per_second: 3
+    - name: "enterprise_features"
+      weight: 5
+      requests_per_second: 2
+  thresholds:
+    http_req_duration: ["p(95)<300"]
+    http_req_failed: ["rate<0.05"]
+    http_reqs: ["rate>400"]
+
+# Peak Load Test Scenario
+peak_load:
+  name: "Peak Load Test"
+  description: "Maximum expected load test"
+  duration: 1800  # 30 minutes
+  users:
+    initial: 1
+    ramp_up: 500
+    steady_state: 500
+    ramp_down: 1
+  ramp_duration: 120
+  scenarios:
+    - name: "arbitration_requests"
+      weight: 50
+      requests_per_second: 25
+    - name: "direct_requests"
+      weight: 30
+      requests_per_second: 15
+    - name: "agent_collaboration"
+      weight: 15
+      requests_per_second: 8
+    - name: "enterprise_features"
+      weight: 5
+      requests_per_second: 3
+  thresholds:
+    http_req_duration: ["p(95)<500"]
+    http_req_failed: ["rate<0.02"]
+    http_reqs: ["rate>800"]
+
+# Spike Test Scenario
+spike_load:
+  name: "Spike Load Test"
+  description: "Sudden traffic spike simulation"
+  duration: 600  # 10 minutes
+  phases:
+    - duration: 120
+      users: 50
+      description: "Normal load"
+    - duration: 60
+      users: 300
+      description: "Traffic spike"
+    - duration: 180
+      users: 50
+      description: "Recovery period"
+    - duration: 60
+      users: 400
+      description: "Second spike"
+    - duration: 180
+      users: 50
+      description: "Final recovery"
+  scenarios:
+    - name: "arbitration_requests"
+      weight: 70
+      requests_per_second: 10
+    - name: "direct_requests"
+      weight: 30
+      requests_per_second: 5
+  thresholds:
+    http_req_duration: ["p(95)<1000"]
+    http_req_failed: ["rate<0.1"]
+
+# Endurance Test Scenario
+endurance_load:
+  name: "Endurance Load Test"
+  description: "Long-running test to detect memory leaks and degradation"
+  duration: 14400  # 4 hours
+  users:
+    initial: 1
+    ramp_up: 100
+    steady_state: 100
+    ramp_down: 1
+  ramp_duration: 300  # 5 minutes
+  scenarios:
+    - name: "arbitration_requests"
+      weight: 60
+      requests_per_second: 5
+    - name: "direct_requests"
+      weight: 25
+      requests_per_second: 2
+    - name: "agent_collaboration"
+      weight: 10
+      requests_per_second: 1
+    - name: "memory_intensive"
+      weight: 5
+      requests_per_second: 0.5
+  thresholds:
+    http_req_duration: ["p(95)<250"]
+    http_req_failed: ["rate<0.05"]
+    memory_usage: ["value<2048MB"]
+
+# Enterprise Features Test
+enterprise_load:
+  name: "Enterprise Features Load Test"
+  description: "Load test focusing on enterprise-tier features"
+  duration: 1200  # 20 minutes
+  users:
+    initial: 1
+    ramp_up: 150
+    steady_state: 150
+    ramp_down: 1
+  ramp_duration: 60
+  scenarios:
+    - name: "cognitive_fingerprinting"
+      weight: 25
+      requests_per_second: 3
+    - name: "dynamic_context_compression"
+      weight: 25
+      requests_per_second: 3
+    - name: "multi_agent_orchestration"
+      weight: 20
+      requests_per_second: 2
+    - name: "semantic_caching"
+      weight: 15
+      requests_per_second: 2
+    - name: "policy_enforcement"
+      weight: 10
+      requests_per_second: 1
+    - name: "audit_logging"
+      weight: 5
+      requests_per_second: 0.5
+  thresholds:
+    http_req_duration: ["p(95)<100"]
+    http_req_failed: ["rate<0.01"]
+    http_reqs: ["rate>300"]
+
+# Common configuration for all tests
+common:
+  base_url: "http://localhost:3000"
+  api_version: "v1"
+  timeout: 30000  # 30 seconds
+  headers:
+    Content-Type: "application/json"
+    Accept: "application/json"
+  authentication:
+    type: "bearer"
+    token_endpoint: "/api/auth/token"
+  monitoring:
+    enable_metrics: true
+    metrics_endpoint: "/metrics"
+    log_level: "info"
+  data_collection:
+    enable_detailed_logs: true
+    sample_rate: 0.1  # 10% of requests
+    custom_metrics:
+      - arbitration_decision_time
+      - provider_selection_accuracy
+      - cost_optimization_rate
+      - agent_collaboration_efficiency

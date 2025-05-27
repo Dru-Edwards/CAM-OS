@@ -1,0 +1,55 @@
+# Azure Developer CLI (azd) configuration file for Complete Arbitration Mesh
+name: complete-arbitration-mesh
+metadata:
+  template: Complete-Arbitration-Mesh-Final@2.0.0
+  description: "Intelligent orchestration and collaboration for modern AI ecosystems"
+
+# Services configuration
+services:
+  complete-arbitration-mesh:
+    project: .
+    language: ts
+    host: containerapp
+    hooks:
+      prebuild:
+        shell: pwsh
+        run: |
+          Write-Host "Building Complete Arbitration Mesh..." -ForegroundColor Green
+          npm ci
+          npm run build
+        continueOnError: false
+      postdeploy:
+        shell: pwsh
+        run: |
+          Write-Host "Complete Arbitration Mesh deployed successfully!" -ForegroundColor Green
+          Write-Host "Service URL: $env:SERVICE_COMPLETE_ARBITRATION_MESH_URI" -ForegroundColor Cyan
+        continueOnError: true
+    docker:
+      path: ./Dockerfile
+      context: .
+      target: production
+
+# Infrastructure configuration
+infra:
+  provider: bicep
+  path: infra
+  module: main
+
+# Deployment hooks
+hooks:
+  preprovision:
+    shell: pwsh
+    run: |
+      Write-Host "Preparing Complete Arbitration Mesh deployment..." -ForegroundColor Yellow
+      if (!(Test-Path ".env")) {
+        Write-Host "Creating default .env file..." -ForegroundColor Yellow
+        @"
+NODE_ENV=production
+CAM_LOG_LEVEL=info
+PORT=8080
+"@ | Out-File -FilePath ".env" -Encoding UTF8
+      }
+  postprovision:
+    shell: pwsh
+    run: |
+      Write-Host "Infrastructure provisioned successfully!" -ForegroundColor Green
