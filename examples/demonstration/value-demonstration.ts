@@ -326,16 +326,16 @@ async function demonstrateMultiAgentCollaboration() {
   
   console.log('\nCollaboration Workflow:');
   collaborationSteps.forEach(step => {
-    console.log(`  ${step.step}. ${step.description} - ${chalk.green(step.status)}`);
+    console.log(`  ${step.step}. ${step.description} - ${step.status}`);
   });
   
   console.log('\nQuality Comparison:');
   const qualityTable = new Table({
     head: [
-      chalk.white.bold('Metric'),
-      chalk.white.bold('Single Agent'),
-      chalk.white.bold('Multi-Agent'),
-      chalk.white.bold('Improvement')
+      chalk.bold('Metric'),
+      chalk.bold('Single Agent'),
+      chalk.bold('Multi-Agent'),
+      chalk.bold('Improvement')
     ]
   });
   

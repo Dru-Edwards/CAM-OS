@@ -35,7 +35,13 @@ interface ComplexTask {
 }
 
 // Define type for agent capabilities
-type AgentCapabilities = string;
+interface AgentCapabilities {
+  type: string;
+  skills: string[];
+  specializations: string[];
+  quality: number;
+  cost: number;
+}
 
 // Complex tasks that benefit from multi-agent collaboration
 const COMPLEX_TASKS: ComplexTask[] = [
@@ -214,17 +220,28 @@ async function runBenchmark() {
     
     // Step 1: Task decomposition
     const decomposedTask = await cam.decomposeTask({
-      task: task.description,
-      requirements: task.requirements as AgentCapabilities[]
+      id: `task-${i}`,
+      description: task.description,
+      requirements: task.requirements,
+      constraints: {},
+      priority: 'medium'
     });
     
     // Step 2: Agent discovery
-    const agents = await cam.discoverAgents(task.requirements as AgentCapabilities[]);
+    // Convert string requirements to AgentCapabilities objects
+    const agentCapabilities = task.requirements.map(req => ({
+      type: req,
+      skills: [req],
+      specializations: [req],
+      quality: 0.9,
+      cost: 0.1
+    }));
+    const agents = await cam.discoverAgents(agentCapabilities);
     
     // Step 3: Collaboration session
     const collaborationRequest: CollaborationRequest = {
       task: task.description,
-      requirements: task.requirements as AgentCapabilities[],
+      requirements: task.requirements,
       decomposition: "auto"
     };
     

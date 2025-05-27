@@ -107,7 +107,7 @@ async function runBenchmark() {
     const directStart = Date.now();
     const directResponse = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: prompt as string }],
       max_tokens: 150
     });
     const directEnd = Date.now();
@@ -122,13 +122,13 @@ async function runBenchmark() {
     
     // CAM Protocol call
     const camRequest: AICoreRequest = {
-      task: 'text-generation',
-      prompt: prompt,
+      prompt: prompt as string,
       maxTokens: 150,
       requirements: {
         cost: 'optimize',
         performance: 'balanced'
-      }
+      },
+      metadata: { task: 'text-generation' }
     };
     
     const camStart = Date.now();
@@ -137,8 +137,8 @@ async function runBenchmark() {
     const camLatency = camEnd - camStart;
     
     // Calculate CAM cost (from response metadata)
-    const camCost = camResponse.cost || 0;
-    const camProvider = camResponse.provider || 'unknown';
+    const camCost = camResponse.cost !== undefined ? camResponse.cost : 0;
+    const camProvider = camResponse.provider !== undefined ? camResponse.provider : 'unknown';
     
     // Calculate savings
     const costSavings = directCost - camCost;
