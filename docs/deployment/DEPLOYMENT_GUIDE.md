@@ -160,8 +160,9 @@ After deploying the CAM Protocol, you need to configure Stripe for payment proce
 
 1. Create products and prices in the Stripe dashboard:
    - Community tier (free)
-   - Professional tier ($299/month)
-   - Enterprise tier ($4,999/month)
+   - Growth tier ($149/month)
+   - Professional tier ($199/month)
+   - Enterprise tier (starting at $1,999/month)
 
 2. Update your environment variables with the product and price IDs.
 

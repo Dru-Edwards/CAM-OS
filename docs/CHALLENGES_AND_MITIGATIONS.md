@@ -38,7 +38,7 @@ This document acknowledges potential challenges with the CAM Protocol and outlin
 ### 3. Cost for Advanced Features
 
 **Challenges:**
-- Professional ($299/mo) and Enterprise ($4,999/mo) tiers may deter small organizations or startups
+- Our previous pricing structure was too high, but we've now introduced a more competitive model with Growth ($149/mo), Professional ($199/mo), and Enterprise (from $1,999/mo) tiers
 - Lack of detailed pricing transparency in the README
 - Commons Clause License for Professional/Enterprise tiers may limit flexibility compared to fully open-source alternatives
 
