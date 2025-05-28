@@ -2,6 +2,8 @@
 
 Get up and running with Complete Arbitration Mesh in minutes.
 
+> **Disclaimer:** This project is in **pre-release** and some components are actively being developed. Refer to [ROADMAP.md](../ROADMAP.md) for planned features and timelines.
+
 ## Prerequisites
 
 - Node.js 18+ or Python 3.9+
