@@ -13,9 +13,13 @@ import type {
   PolicyValidationRequest,
   PolicyValidationResult
 } from '../shared/types.js';
+import type { ProviderConfig } from '../shared/config.js';
+import fs from 'fs';
+import path from 'path';
 
 export class FastPathRouter {
   private logger: Logger;
+  private providerConfigs: Record<string, ProviderConfig> = {};
   constructor() {
     this.logger = new Logger('info'); // Initialize with a valid LogLevel
     this.logger.info('FastPath Router initialized');
@@ -382,86 +386,53 @@ export class FastPathRouter {
     return await this.getOptimalProvider(requirements);
   }
 
+  private loadProviderConfigs(): void {
+    if (Object.keys(this.providerConfigs).length > 0) return;
+
+    const envConfig = process.env['CAM_PROVIDER_CONFIG'];
+    if (envConfig) {
+      try {
+        const parsed = JSON.parse(envConfig) as ProviderConfig[];
+        parsed.forEach(p => {
+          if (p.enabled) this.providerConfigs[p.id] = p;
+        });
+      } catch (err) {
+        this.logger.warn('Failed to parse CAM_PROVIDER_CONFIG', { error: err });
+      }
+    }
+
+    if (Object.keys(this.providerConfigs).length === 0) {
+      const filePath = process.env['CAM_PROVIDER_CONFIG_FILE'] || path.resolve('providers.json');
+      if (fs.existsSync(filePath)) {
+        try {
+          const fileData = fs.readFileSync(filePath, 'utf-8');
+          const parsed = JSON.parse(fileData) as ProviderConfig[];
+          parsed.forEach(p => {
+            if (p.enabled) this.providerConfigs[p.id] = p;
+          });
+        } catch (err) {
+          this.logger.warn('Failed to load provider config file', { error: err });
+        }
+      }
+    }
+  }
+
   /**
    * Get all available AI providers from the provider registry
    * In a real implementation, this would query a database or service registry
    */
   private async getAvailableProviders(): Promise<ProviderInfo[]> {
-    // In a production system, this would fetch providers from a database or service registry
-    // For now, we'll return a hardcoded list of sample providers with realistic pricing
-    
-    return [
-      {
-        id: 'openai-gpt4',
-        name: 'OpenAI GPT-4',
-        type: 'openai',
-        models: ['gpt-4', 'gpt-4-turbo'],
-        pricing: {
-          inputTokens: 0.01,
-          outputTokens: 0.03,
-          currency: 'USD'
-        },
-        capabilities: ['text-generation', 'code-generation', 'analysis', 'reasoning'],
-        regions: ['us-east-1', 'eu-west-1'],
-        status: 'available'
-      },
-      {
-        id: 'openai-gpt35',
-        name: 'OpenAI GPT-3.5 Turbo',
-        type: 'openai',
-        models: ['gpt-3.5-turbo'],
-        pricing: {
-          inputTokens: 0.0005,
-          outputTokens: 0.0015,
-          currency: 'USD'
-        },
-        capabilities: ['text-generation', 'code-generation', 'analysis'],
-        regions: ['us-east-1', 'eu-west-1', 'ap-southeast-1'],
-        status: 'available'
-      },
-      {
-        id: 'anthropic-claude3',
-        name: 'Anthropic Claude 3',
-        type: 'anthropic',
-        models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
-        pricing: {
-          inputTokens: 0.008,
-          outputTokens: 0.024,
-          currency: 'USD'
-        },
-        capabilities: ['text-generation', 'analysis', 'reasoning', 'long-context'],
-        regions: ['us-east-1', 'us-west-2'],
-        status: 'available'
-      },
-      {
-        id: 'google-gemini',
-        name: 'Google Gemini',
-        type: 'google',
-        models: ['gemini-pro', 'gemini-ultra'],
-        pricing: {
-          inputTokens: 0.007,
-          outputTokens: 0.014,
-          currency: 'USD'
-        },
-        capabilities: ['text-generation', 'code-generation', 'multimodal'],
-        regions: ['us-central1', 'europe-west4'],
-        status: 'available'
-      },
-      {
-        id: 'azure-openai',
-        name: 'Azure OpenAI',
-        type: 'azure',
-        models: ['gpt-4', 'gpt-3.5-turbo'],
-        pricing: {
-          inputTokens: 0.012,
-          outputTokens: 0.032,
-          currency: 'USD'
-        },
-        capabilities: ['text-generation', 'code-generation', 'analysis', 'enterprise-security'],
-        regions: ['eastus', 'westeurope', 'southeastasia'],
-        status: 'available'
-      }
-    ];
+    this.loadProviderConfigs();
+    return Object.values(this.providerConfigs).map(cfg => ({
+      id: cfg.id,
+      name: cfg.id,
+      type: cfg.type as any,
+      models: (cfg as any).models || [],
+      pricing: (cfg as any).pricing || { inputTokens: 0, outputTokens: 0, currency: 'USD' },
+      capabilities: (cfg as any).capabilities || [],
+      regions: (cfg as any).regions || [],
+      status: cfg.enabled ? 'available' : 'unavailable'
+    }));
   }
 
   private async executeRequest(request: AICoreRequest, provider: ProviderInfo): Promise<AICoreResponse> {
@@ -549,35 +520,51 @@ export class FastPathRouter {
    * In a real implementation, this would use the OpenAI SDK
    */
   private async executeOpenAIRequest(request: AICoreRequest, provider: ProviderInfo, model: string): Promise<AICoreResponse> {
-    // In a real implementation, this would use the OpenAI SDK
-    // For now, simulate a response with realistic token counts and latency
-    
-    // Simulate API call delay - faster for GPT-3.5, slower for GPT-4
-    const isGpt4 = model.includes('gpt-4');
-    await new Promise(resolve => setTimeout(resolve, isGpt4 ? 2000 : 800));
-    
-    // Calculate realistic token usage
-    const promptTokens = Math.floor(request.prompt.length / 4);
-    const completionTokens = Math.floor(promptTokens * 0.8);
-    const totalTokens = promptTokens + completionTokens;
-    
-    return {
-      content: `OpenAI ${model} response to: ${request.prompt.substring(0, 50)}...\n\nThis is a simulated response that would contain the AI-generated content based on the prompt.`,
-      provider: provider.id,
-      model,
-      usage: {
-        promptTokens,
-        completionTokens,
-        totalTokens
-      },
-      latency: 0, // Will be set by the caller
-      cost: 0, // Will be calculated by the caller
-      metadata: {
-        provider: provider.name,
-        timestamp: new Date().toISOString(),
-        temperature: request.temperature || 0.7
+    const cfg = this.providerConfigs[provider.id];
+    if (!cfg) throw new CAMError('CONFIG_NOT_FOUND', `Missing configuration for provider ${provider.id}`);
+
+    const endpoint = cfg.endpoint || 'https://api.openai.com/v1/chat/completions';
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cfg.apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: request.prompt }],
+          temperature: request.temperature ?? 0.7,
+          max_tokens: request.maxTokens
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new CAMError('PROVIDER_ERROR', data.error?.message || 'OpenAI request failed');
       }
-    };
+
+      return {
+        content: data.choices?.[0]?.message?.content || '',
+        provider: provider.id,
+        model,
+        usage: {
+          promptTokens: data.usage?.prompt_tokens || 0,
+          completionTokens: data.usage?.completion_tokens || 0,
+          totalTokens: data.usage?.total_tokens || 0
+        },
+        latency: 0,
+        cost: 0,
+        metadata: {
+          provider: provider.name,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new CAMError('PROVIDER_ERROR', message);
+    }
   }
   
   /**
@@ -585,39 +572,54 @@ export class FastPathRouter {
    * In a real implementation, this would use the Anthropic SDK
    */
   private async executeAnthropicRequest(request: AICoreRequest, provider: ProviderInfo, model: string): Promise<AICoreResponse> {
-    // In a real implementation, this would use the Anthropic SDK
-    // Simulate API call delay - different models have different latencies
-    const latencyMap: {[key: string]: number} = {
-      'claude-3-opus': 3000,
-      'claude-3-sonnet': 1500,
-      'claude-3-haiku': 700
-    };
-    
-    const delay = latencyMap[model] || 1500;
-    await new Promise(resolve => setTimeout(resolve, delay));
-    
-    // Calculate realistic token usage
-    const promptTokens = Math.floor(request.prompt.length / 4);
-    const completionTokens = Math.floor(promptTokens * 0.9); // Claude tends to be more verbose
-    const totalTokens = promptTokens + completionTokens;
-    
-    return {
-      content: `Anthropic ${model} response to: ${request.prompt.substring(0, 50)}...\n\nThis is a simulated response that would contain Claude's AI-generated content based on the prompt.`,
-      provider: provider.id,
-      model,
-      usage: {
-        promptTokens,
-        completionTokens,
-        totalTokens
-      },
-      latency: 0, // Will be set by the caller
-      cost: 0, // Will be calculated by the caller
-      metadata: {
-        provider: provider.name,
-        timestamp: new Date().toISOString(),
-        temperature: request.temperature || 0.7
+    const cfg = this.providerConfigs[provider.id];
+    if (!cfg) throw new CAMError('CONFIG_NOT_FOUND', `Missing configuration for provider ${provider.id}`);
+
+    const endpoint = cfg.endpoint || 'https://api.anthropic.com/v1/messages';
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': cfg.apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: request.prompt }],
+          temperature: request.temperature ?? 0.7,
+          max_tokens: request.maxTokens
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new CAMError('PROVIDER_ERROR', data.error?.message || 'Anthropic request failed');
       }
-    };
+
+      const content = Array.isArray(data.content) ? data.content.map((p: any) => p.text).join(' ') : data.content?.[0]?.text || '';
+
+      return {
+        content,
+        provider: provider.id,
+        model,
+        usage: {
+          promptTokens: data.usage?.input_tokens || 0,
+          completionTokens: data.usage?.output_tokens || 0,
+          totalTokens: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
+        },
+        latency: 0,
+        cost: 0,
+        metadata: {
+          provider: provider.name,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new CAMError('PROVIDER_ERROR', message);
+    }
   }
   
   /**
@@ -625,33 +627,48 @@ export class FastPathRouter {
    * In a real implementation, this would use the Google Gemini API
    */
   private async executeGoogleRequest(request: AICoreRequest, provider: ProviderInfo, model: string): Promise<AICoreResponse> {
-    // In a real implementation, this would use the Google Gemini API
-    // Simulate API call delay
-    const delay = model.includes('ultra') ? 2500 : 1200;
-    await new Promise(resolve => setTimeout(resolve, delay));
-    
-    // Calculate realistic token usage
-    const promptTokens = Math.floor(request.prompt.length / 4);
-    const completionTokens = Math.floor(promptTokens * 0.7);
-    const totalTokens = promptTokens + completionTokens;
-    
-    return {
-      content: `Google ${model} response to: ${request.prompt.substring(0, 50)}...\n\nThis is a simulated response that would contain Gemini's AI-generated content based on the prompt.`,
-      provider: provider.id,
-      model,
-      usage: {
-        promptTokens,
-        completionTokens,
-        totalTokens
-      },
-      latency: 0, // Will be set by the caller
-      cost: 0, // Will be calculated by the caller
-      metadata: {
-        provider: provider.name,
-        timestamp: new Date().toISOString(),
-        temperature: request.temperature || 0.7
+    const cfg = this.providerConfigs[provider.id];
+    if (!cfg) throw new CAMError('CONFIG_NOT_FOUND', `Missing configuration for provider ${provider.id}`);
+
+    const urlBase = cfg.endpoint || 'https://generativelanguage.googleapis.com/v1beta';
+    const url = `${urlBase}/models/${model}:generateContent?key=${cfg.apiKey}`;
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: request.prompt }] }],
+          temperature: request.temperature ?? 0.7,
+          generationConfig: { maxOutputTokens: request.maxTokens }
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new CAMError('PROVIDER_ERROR', data.error?.message || 'Google request failed');
       }
-    };
+
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const usage = data.usageMetadata || {};
+
+      return {
+        content: text,
+        provider: provider.id,
+        model,
+        usage: {
+          promptTokens: usage.promptTokenCount || 0,
+          completionTokens: usage.candidatesTokenCount || 0,
+          totalTokens: usage.totalTokenCount || 0
+        },
+        latency: 0,
+        cost: 0,
+        metadata: { provider: provider.name, timestamp: new Date().toISOString() }
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new CAMError('PROVIDER_ERROR', message);
+    }
   }
   
   /**
@@ -659,34 +676,51 @@ export class FastPathRouter {
    * In a real implementation, this would use the Azure OpenAI SDK
    */
   private async executeAzureRequest(request: AICoreRequest, provider: ProviderInfo, model: string): Promise<AICoreResponse> {
-    // In a real implementation, this would use the Azure OpenAI SDK
-    // Simulate API call delay
-    const isGpt4 = model.includes('gpt-4');
-    await new Promise(resolve => setTimeout(resolve, isGpt4 ? 2200 : 900));
-    
-    // Calculate realistic token usage
-    const promptTokens = Math.floor(request.prompt.length / 4);
-    const completionTokens = Math.floor(promptTokens * 0.8);
-    const totalTokens = promptTokens + completionTokens;
-    
-    return {
-      content: `Azure OpenAI ${model} response to: ${request.prompt.substring(0, 50)}...\n\nThis is a simulated response that would contain the AI-generated content based on the prompt, delivered via Azure.`,
-      provider: provider.id,
-      model,
-      usage: {
-        promptTokens,
-        completionTokens,
-        totalTokens
-      },
-      latency: 0, // Will be set by the caller
-      cost: 0, // Will be calculated by the caller
-      metadata: {
-        provider: provider.name,
-        timestamp: new Date().toISOString(),
-        temperature: request.temperature || 0.7,
-        region: request.requirements?.region || 'eastus'
+    const cfg = this.providerConfigs[provider.id];
+    if (!cfg) throw new CAMError('CONFIG_NOT_FOUND', `Missing configuration for provider ${provider.id}`);
+
+    const url = `${cfg.endpoint}/openai/deployments/${model}/chat/completions?api-version=2023-05-15`;
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': cfg.apiKey
+        },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: request.prompt }],
+          temperature: request.temperature ?? 0.7,
+          max_tokens: request.maxTokens
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new CAMError('PROVIDER_ERROR', data.error?.message || 'Azure request failed');
       }
-    };
+
+      return {
+        content: data.choices?.[0]?.message?.content || '',
+        provider: provider.id,
+        model,
+        usage: {
+          promptTokens: data.usage?.prompt_tokens || 0,
+          completionTokens: data.usage?.completion_tokens || 0,
+          totalTokens: data.usage?.total_tokens || 0
+        },
+        latency: 0,
+        cost: 0,
+        metadata: {
+          provider: provider.name,
+          timestamp: new Date().toISOString(),
+          region: request.requirements?.region || 'eastus'
+        }
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new CAMError('PROVIDER_ERROR', message);
+    }
   }
 
   private async recordMetrics(request: AICoreRequest, response: AICoreResponse, provider: ProviderInfo): Promise<void> {
