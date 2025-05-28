@@ -164,7 +164,7 @@ After deploying the CAM Protocol, you need to configure Stripe for payment proce
    - Professional tier (contact sales)
    - Enterprise tier (contact sales)
 
-For pricing information, please contact: [edwardstechpros+cam@outlook.com](mailto:edwardstechpros+cam@outlook.com)
+For pricing information, please contact: [edwardstechpros@outlook.com](mailto:edwardstechpros@outlook.com)
 
 2. Update your environment variables with the product and price IDs.
 

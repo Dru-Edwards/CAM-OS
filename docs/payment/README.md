@@ -81,7 +81,7 @@ The CAM Protocol offers four subscription tiers:
 | **Policy Management** | Limited | Standard | Advanced | Enterprise-grade |
 | **Support** | Community | Email | Business Hours | 24/7 Premium |
 | **SLA** | None | 99.9% | 99.95% | 99.99% |
-| **Price** | Free | [Contact Us](mailto:edwardstechpros+cam@outlook.com) | [Contact Us](mailto:edwardstechpros+cam@outlook.com) | [Contact Us](mailto:edwardstechpros+cam@outlook.com) |
+| **Price** | Free | [Contact Us](mailto:edwardstechpros@outlook.com) | [Contact Us](mailto:edwardstechpros@outlook.com) | [Contact Us](mailto:edwardstechpros@outlook.com) |
 
 ## API Reference
 

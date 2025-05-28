@@ -196,7 +196,7 @@ The Complete Arbitration Mesh takes security seriously:
 | **Policy Management** | Limited | Standard | Advanced | Enterprise-grade |
 | **Support** | Community | Email | Business Hours | 24/7 Premium |
 | **SLA** | None | 99.9% | 99.95% | 99.99% |
-| **Price** | Free | [Contact Us](mailto:edwardstechpros+cam@outlook.com) | [Contact Us](mailto:edwardstechpros+cam@outlook.com) | [Contact Us](mailto:edwardstechpros+cam@outlook.com) |
+| **Price** | Free | [Contact Us](mailto:edwardstechpros@outlook.com) | [Contact Us](mailto:edwardstechpros@outlook.com) | [Contact Us](mailto:edwardstechpros@outlook.com) |
 
 ## 🤝 Contributing
 

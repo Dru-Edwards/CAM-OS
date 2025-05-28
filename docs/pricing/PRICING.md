@@ -14,7 +14,7 @@ The CAM Protocol offers flexible pricing options designed to meet the needs of o
 | **API Requests** | Limited | Standard | Advanced | Unlimited |
 | **Agents** | Limited | Standard | Advanced | Unlimited |
 | **Collaborations** | Limited | Standard | Advanced | Unlimited |
-| **Price** | Free | [Contact Us](mailto:edwardstechpros+cam@outlook.com) | [Contact Us](mailto:edwardstechpros+cam@outlook.com) | [Contact Us](mailto:edwardstechpros+cam@outlook.com) |
+| **Price** | Free | [Contact Us](mailto:edwardstechpros@outlook.com) | [Contact Us](mailto:edwardstechpros@outlook.com) | [Contact Us](mailto:edwardstechpros@outlook.com) |
 
 ## Value Proposition
 
@@ -33,13 +33,13 @@ Our comprehensive compliance features help organizations meet regulatory require
 ## Special Programs
 
 ### Startup Program
-Qualifying startups receive special pricing for the first year. [Contact us](mailto:edwardstechpros+cam@outlook.com) to learn more.
+Qualifying startups receive special pricing for the first year. [Contact us](mailto:edwardstechpros@outlook.com) to learn more.
 
 ### Open Source Program
-Active open-source projects can apply for free or discounted access. [Contact us](mailto:edwardstechpros+cam@outlook.com) to learn more.
+Active open-source projects can apply for free or discounted access. [Contact us](mailto:edwardstechpros@outlook.com) to learn more.
 
 ### Academic & Research
-Educational institutions and research organizations are eligible for special pricing. [Contact us](mailto:edwardstechpros+cam@outlook.com) to learn more.
+Educational institutions and research organizations are eligible for special pricing. [Contact us](mailto:edwardstechpros@outlook.com) to learn more.
 
 ## Custom Solutions
 
@@ -49,6 +49,6 @@ We understand that every organization has unique needs. Our team can work with y
 
 For detailed pricing information or to discuss your specific needs:
 
-- **Email**: [edwardstechpros+cam@outlook.com](mailto:edwardstechpros+cam@outlook.com)
+- **Email**: [edwardstechpros@outlook.com](mailto:edwardstechpros@outlook.com)
 
 We're committed to providing transparent and fair pricing that delivers exceptional value for your investment.
