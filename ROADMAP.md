@@ -21,7 +21,7 @@ The CAM Protocol reached production-ready status with the **2.0.0** release on M
 
 | Milestone | Status | Description |
 |-----------|--------|-------------|
-| v1.0.0 | 📅 Planned (July 2025) | First stable release with production SLAs |
+| v2.1.0 | 📅 Planned (July 2025) | First minor update with production SLAs |
 | Kubernetes Operator | 📅 Planned | Native Kubernetes integration for simplified deployment |
 | Observability Enhancements | 📅 Planned | OpenTelemetry integration and Grafana dashboards |
 | Natural Language Interface | 📅 Planned | Premium feature for Growth+ tier customers |
@@ -30,7 +30,7 @@ The CAM Protocol reached production-ready status with the **2.0.0** release on M
 
 | Milestone | Status | Description |
 |-----------|--------|-------------|
-| v1.1.0 | 📅 Planned | Enhanced routing algorithms and cost optimization |
+| v2.2.0 | 📅 Planned | Enhanced routing algorithms and cost optimization |
 | Multi-Region Support | 📅 Planned | Geo-distributed deployment capabilities |
 | Voice Interface | 📅 Planned | Premium feature for Professional+ tier customers |
 | Community Plugin System | 📅 Planned | Framework for third-party extensions |
@@ -39,7 +39,7 @@ The CAM Protocol reached production-ready status with the **2.0.0** release on M
 
 | Milestone | Status | Description |
 |-----------|--------|-------------|
-| v1.2.0 | 📅 Planned | Advanced failure prediction and prevention |
+| v2.3.0 | 📅 Planned | Advanced failure prediction and prevention |
 | Custom Domain Adaptation | 📅 Planned | Premium feature for Enterprise tier customers |
 | Edge Deployment | 📅 Planned | Support for edge computing environments |
 | Federated Learning | 📅 Planned | Distributed model training coordination |

@@ -2,7 +2,7 @@
 
 Get up and running with Complete Arbitration Mesh in minutes.
 
-> **Disclaimer:** This project is in **pre-release** and some components are actively being developed. Refer to [ROADMAP.md](../ROADMAP.md) for planned features and timelines.
+> **Version:** This guide applies to **CAM Protocol v2.0.0**, released May 28, 2025. See [ROADMAP.md](../ROADMAP.md) for upcoming features.
 
 ## Prerequisites
 

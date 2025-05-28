@@ -16,7 +16,7 @@
 </div>
 
 
-**Disclaimer:** CAM Protocol is currently in a **pre-release** state and some components are still under development. See [ROADMAP.md](ROADMAP.md) for expected timelines and planned features.
+**Production Status:** CAM Protocol is **production ready** as of the [v2.0.0 release](CHANGELOG.md) on May 28, 2025.
 
 
 ## 🌟 Overview
