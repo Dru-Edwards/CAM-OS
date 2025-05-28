@@ -49,6 +49,6 @@ We understand that every organization has unique needs. Our team can work with y
 
 For detailed pricing information or to discuss your specific needs:
 
-- **Email**: [edwardstechpros@outlook.com](mailto:edwardstechpros@outlook.com)
+- **Email**: [sales@cam-protocol.com](mailto:EdwardsTechPros@Outlook.com)
 
 We're committed to providing transparent and fair pricing that delivers exceptional value for your investment.
