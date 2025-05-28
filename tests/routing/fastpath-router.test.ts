@@ -10,8 +10,65 @@ describe('FastPathRouter', () => {
   let mockLogger: jest.Mocked<Logger>;
 
   beforeEach(() => {
+    process.env.CAM_PROVIDER_CONFIG = JSON.stringify([
+      {
+        id: 'openai',
+        type: 'openai',
+        apiKey: 'test-openai',
+        endpoint: 'https://api.openai.com/v1',
+        models: ['gpt-4', 'gpt-3.5-turbo'],
+        enabled: true,
+        pricing: { inputTokens: 0.001, outputTokens: 0.002, currency: 'USD' },
+        capabilities: ['text-generation'],
+        regions: ['us-east-1']
+      },
+      {
+        id: 'anthropic',
+        type: 'anthropic',
+        apiKey: 'test-anthropic',
+        endpoint: 'https://api.anthropic.com',
+        models: ['claude-3-haiku'],
+        enabled: true,
+        pricing: { inputTokens: 0.002, outputTokens: 0.004, currency: 'USD' },
+        capabilities: ['text-generation'],
+        regions: ['us-east-1']
+      },
+      {
+        id: 'google',
+        type: 'google',
+        apiKey: 'test-google',
+        endpoint: 'https://generativelanguage.googleapis.com/v1beta',
+        models: ['gemini-pro'],
+        enabled: true,
+        pricing: { inputTokens: 0.003, outputTokens: 0.006, currency: 'USD' },
+        capabilities: ['text-generation'],
+        regions: ['us-central1']
+      },
+      {
+        id: 'azure',
+        type: 'azure',
+        apiKey: 'test-azure',
+        endpoint: 'https://azure.openai.com',
+        models: ['gpt-4'],
+        enabled: true,
+        pricing: { inputTokens: 0.004, outputTokens: 0.008, currency: 'USD' },
+        capabilities: ['text-generation'],
+        regions: ['eastus']
+      }
+    ]);
     mockLogger = new Logger({ level: LogLevel.DEBUG }) as jest.Mocked<Logger>;
     router = new FastPathRouter(mockLogger);
+    (global as any).fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: 'ok' } }],
+        usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 }
+      })
+    });
+  });
+
+  afterEach(() => {
+    delete (global as any).fetch;
   });
 
   describe('getAvailableProviders', () => {
@@ -182,6 +239,49 @@ describe('FastPathRouter', () => {
       expect(result.allowed).toBeDefined();
       expect(result.policies).toBeDefined();
       expect(result.reason).toBeDefined();
+    });
+  });
+
+  describe('provider connectors', () => {
+    it('should call OpenAI endpoint', async () => {
+      const providers = await router.getAvailableProviders();
+      const openai = providers.find(p => p.type === 'openai')!;
+      const request = { prompt: 'hi', model: 'gpt-3.5-turbo' };
+      await (router as any).executeRequest(request, openai);
+      expect((global as any).fetch).toHaveBeenCalledWith(
+        'https://api.openai.com/v1/chat/completions', expect.any(Object)
+      );
+    });
+
+    it('should call Anthropic endpoint', async () => {
+      const providers = await router.getAvailableProviders();
+      const anth = providers.find(p => p.type === 'anthropic')!;
+      const request = { prompt: 'hi', model: 'claude-3-haiku' };
+      await (router as any).executeRequest(request, anth);
+      expect((global as any).fetch).toHaveBeenCalledWith(
+        'https://api.anthropic.com/v1/messages', expect.any(Object)
+      );
+    });
+
+    it('should call Google endpoint', async () => {
+      const providers = await router.getAvailableProviders();
+      const google = providers.find(p => p.type === 'google')!;
+      const request = { prompt: 'hi', model: 'gemini-pro' };
+      await (router as any).executeRequest(request, google);
+      expect((global as any).fetch).toHaveBeenCalledWith(
+        expect.stringContaining('generativelanguage.googleapis.com'), expect.any(Object)
+      );
+    });
+
+    it('should call Azure endpoint', async () => {
+      const providers = await router.getAvailableProviders();
+      const azure = providers.find(p => p.type === 'azure')!;
+      const request = { prompt: 'hi', model: 'gpt-4' };
+      await (router as any).executeRequest(request, azure);
+      expect((global as any).fetch).toHaveBeenCalledWith(
+        'https://azure.openai.com/openai/deployments/gpt-4/chat/completions?api-version=2023-05-15',
+        expect.any(Object)
+      );
     });
   });
 });

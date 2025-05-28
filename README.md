@@ -6,6 +6,7 @@
   
   [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
   [![Version](https://img.shields.io/badge/Version-2.0.0-brightgreen.svg)](docs/RELEASE_NOTES.md)
+  [![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen.svg)](CHANGELOG.md)
   [![Compliance](https://img.shields.io/badge/Compliance-GDPR%20|%20CCPA-green.svg)](docs/legal/COMPLIANCE_CHECKLIST.md)
   [![Build Status](https://img.shields.io/github/workflow/status/Complete-Arbitration-Mesh/CAM-PROTOCOL/Continuous%20Integration?branch=main)](https://github.com/Complete-Arbitration-Mesh/CAM-PROTOCOL/actions/workflows/ci.yml)
   [![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen.svg)](./badges/coverage-statements.svg)
@@ -14,7 +15,9 @@
   **Intelligent Orchestration and Collaboration for Modern AI Ecosystems**
 </div>
 
-> **Disclaimer:** CAM Protocol is currently in a **pre-release** state and some components are still under development. See [ROADMAP.md](ROADMAP.md) for expected timelines and planned features.
+
+**Disclaimer:** CAM Protocol is currently in a **pre-release** state and some components are still under development. See [ROADMAP.md](ROADMAP.md) for expected timelines and planned features.
+
 
 ## 🌟 Overview
 
