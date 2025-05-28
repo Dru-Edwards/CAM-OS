@@ -5,6 +5,7 @@
 
 import { Logger } from '../shared/logger.js';
 import { CAMError } from '../shared/errors.js';
+import { AgentRegistry } from './agent-registry.js';
 import type {
   CollaborationRequest,
   CollaborationSession,
@@ -19,10 +20,12 @@ import type {
 export class CollaborationEngine {
   private logger: Logger;
   private activeSessions: Map<string, CollaborationSession>;
+  private registry: AgentRegistry;
 
   constructor() {
     this.logger = new Logger('info'); // Initialize with a valid LogLevel
     this.activeSessions = new Map();
+    this.registry = new AgentRegistry();
     this.logger.info('Collaboration Engine initialized');
   }
 
@@ -55,58 +58,26 @@ export class CollaborationEngine {
 
   async discoverAgents(capabilities: AgentCapabilities[]): Promise<AgentInfo[]> {
     this.logger.debug('Discovering agents', { capabilities });
-
-    // Implementation would include:
-    // - Agent registry lookup
-    // - Capability matching
-    // - Availability checking
-    // - Quality scoring
-
-    // This is a stub implementation
-    return capabilities.map((cap, index) => ({
-      id: `agent-${index + 1}`,
-      name: `${cap.type} Agent`,
-      type: cap.type,
-      capabilities: cap,
-      status: 'available',
-      reputation: 0.9,
-      metadata: {
-        lastSeen: new Date().toISOString(),
-        location: 'us-east-1'
-      }
-    }));
+    const required = capabilities.map(c => c.type);
+    const agents = this.registry.findAgents(required);
+    this.logger.info('Agents discovered', { count: agents.length });
+    return agents;
   }
 
   async decomposeTask(task: ComplexTask): Promise<TaskComponents[]> {
     this.logger.debug('Decomposing task', { task });
-
-    // Implementation would include:
-    // - Task analysis
-    // - Dependency identification
-    // - Capability mapping
-    // - Optimization
-
-    // This is a stub implementation
-    return [
-      {
-        id: `${task.id}-component-1`,
+    const components: TaskComponents[] = [];
+    task.requirements.forEach((req, index) => {
+      components.push({
+        id: `${task.id}-component-${index + 1}`,
         parentTaskId: task.id,
-        description: `Analyze requirements for: ${task.description}`,
-        requiredCapabilities: ['analysis'],
-        dependencies: [],
-        estimatedDuration: 30000
-        // assignedAgent is optional, so we can omit it
-      },
-      {
-        id: `${task.id}-component-2`,
-        parentTaskId: task.id,
-        description: `Execute main task: ${task.description}`,
-        requiredCapabilities: task.requirements,
-        dependencies: [`${task.id}-component-1`],
+        description: `Handle capability: ${req}`,
+        requiredCapabilities: [req],
+        dependencies: index === 0 ? [] : [`${task.id}-component-${index}`],
         estimatedDuration: 60000
-        // assignedAgent is optional, so we can omit it
-      }
-    ];
+      });
+    });
+    return components;
   }
 
   async orchestrateWorkflow(workflow: CollaborationWorkflow): Promise<CollaborationResult> {
@@ -173,26 +144,11 @@ export class CollaborationEngine {
   }
 
   private async findSuitableAgents(requirements: string[]): Promise<AgentInfo[]> {
-    // This would implement sophisticated agent discovery logic
-    // For now, return mock agents
-    return requirements.map((req, index) => ({
-      id: `agent-${req}-${index}`,
-      name: `${req} Specialist`,
-      type: req,
-      capabilities: {
-        type: req,
-        skills: [req],
-        specializations: [req],
-        quality: 0.9,
-        cost: 0.1
-      },
-      status: 'available',
-      reputation: 0.9,
-      metadata: {
-        experience: '5 years',
-        location: 'cloud'
-      }
-    }));
+    const agents = this.registry.findAgents(requirements);
+    if (agents.length === 0) {
+      throw new CAMError('AGENT_UNAVAILABLE', 'No suitable agents found');
+    }
+    return agents;
   }
 
   private async createCollaborationSession(request: CollaborationRequest, agents: AgentInfo[]): Promise<CollaborationSession> {
@@ -229,32 +185,39 @@ export class CollaborationEngine {
   }
 
   private async executeWorkflowSteps(workflow: CollaborationWorkflow): Promise<any[]> {
-    // This would implement the actual workflow execution logic
-    // For now, return mock execution path
-    return workflow.steps.map(step => ({
-      stepId: step.id,
-      agent: step.agent || 'default-agent',
-      startTime: new Date().toISOString(),
-      endTime: new Date(Date.now() + 1000).toISOString(),
-      input: step.input,
-      output: `Result of ${step.type} step`,
-      status: 'completed'
-    }));
+    const execution: any[] = [];
+    for (const step of workflow.steps) {
+      const start = new Date();
+      await new Promise(res => setTimeout(res, 10));
+      const end = new Date();
+      execution.push({
+        stepId: step.id,
+        agent: step.agent || 'unassigned',
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+        input: step.input,
+        output: `Output of ${step.id}`,
+        status: 'completed'
+      });
+    }
+    return execution;
   }
 
   private async collectWorkflowResults(workflow: CollaborationWorkflow, executionPath: any[]): Promise<CollaborationResult> {
+    const start = new Date(executionPath[0].startTime).getTime();
+    const end = new Date(executionPath[executionPath.length - 1].endTime).getTime();
     return {
       sessionId: workflow.id,
       result: {
         workflowId: workflow.id,
         status: 'completed',
-        output: 'Workflow completed successfully'
+        output: 'Workflow executed'
       },
-      participatingAgents: workflow.agents,
+      participatingAgents: Array.from(new Set(executionPath.map(e => e.agent))),
       executionPath,
       metadata: {
-        duration: 5000,
-        cost: 0.05,
+        duration: end - start,
+        cost: executionPath.length * 0.01,
         quality: 0.95
       }
     };

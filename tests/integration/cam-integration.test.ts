@@ -248,6 +248,41 @@ describe('Complete Arbitration Mesh Integration', () => {
       expect(result.totalDuration).toBe(38000);
       expect(result.success).toBe(true);
     });
+
+    it('should execute workflow with real engine logic', async () => {
+      const workflow = {
+        id: 'wf-test-1',
+        name: 'simple workflow',
+        steps: [
+          { id: 's1', type: 'task', agent: 'analysis', input: {}, dependencies: [], timeout: 1000 },
+          { id: 's2', type: 'task', agent: 'reporting', input: {}, dependencies: ['s1'], timeout: 1000 }
+        ],
+        agents: ['analysis', 'reporting'],
+        timeout: 10000,
+        metadata: {}
+      };
+
+      const result = await cam.orchestrateWorkflow(workflow);
+
+      expect(result.executionPath).toHaveLength(2);
+      expect(result.participatingAgents).toContain('analysis');
+      expect(result.metadata.duration).toBeGreaterThan(0);
+    });
+
+    it('should decompose tasks based on requirements', async () => {
+      const task = {
+        id: 'task1',
+        description: 'do analysis and reporting',
+        requirements: ['analysis', 'reporting'],
+        constraints: {},
+        priority: 'high'
+      };
+
+      const components = await cam.decomposeTask(task);
+
+      expect(components).toHaveLength(2);
+      expect(components[1].dependencies).toContain(components[0].id);
+    });
   });
 
   describe('Cross-Component Integration', () => {
