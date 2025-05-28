@@ -61,10 +61,10 @@ For a full-featured environment including CAM Protocol, a toy LLM, and monitorin
 
 ```bash
 # Clone the repository
-git clone https://github.com/cam-protocol/complete-arbitration-mesh.git
+git clone https://github.com/Complete-Arbitration-Mesh/CAM-PROTOCOL.git
 
 # Start the quickstart environment
-cd complete-arbitration-mesh/examples/quickstart
+cd CAM-PROTOCOL/examples/quickstart
 docker-compose up -d
 
 # Test it with a simple request
@@ -83,7 +83,11 @@ npx @cam-protocol/demo
 npm run demo:value
 ```
 
-### Basic Usage
+### SDK Examples
+
+CAM Protocol provides SDKs for multiple languages. Here are examples in TypeScript, Python, and Go:
+
+#### TypeScript/JavaScript ([SDK Documentation](sdk/js/README.md))
 
 ```typescript
 import { CompleteArbitrationMesh } from '@cam-protocol/complete-arbitration-mesh';
@@ -105,6 +109,69 @@ const collaboration = await cam.initiateCollaboration({
   requirements: ["data-analyst", "visualization-expert"],
   decomposition: "auto"
 });
+```
+
+#### Python ([SDK Documentation](sdk/python/README.md))
+
+```python
+from cam_protocol import CompleteArbitrationMesh
+
+# Initialize the CAM client
+cam = CompleteArbitrationMesh(
+    api_key=os.environ.get("CAM_API_KEY"),
+    endpoint="https://api.complete-cam.com"
+)
+
+# Intelligent routing
+routing_result = cam.route_request(
+    prompt="Analyze this dataset",
+    requirements={"cost": "optimize", "performance": "balanced"}
+)
+
+# Agent collaboration
+collaboration = cam.initiate_collaboration(
+    task="Complex data analysis and visualization",
+    requirements=["data-analyst", "visualization-expert"],
+    decomposition="auto"
+)
+```
+
+#### Go ([SDK Documentation](sdk/go/README.md))
+
+```go
+package main
+
+import (
+	"os"
+	"github.com/complete-arbitration-mesh/cam-protocol-go"
+)
+
+func main() {
+	// Initialize the CAM client
+	cam, err := camprotocol.NewClient(
+		camprotocol.WithAPIKey(os.Getenv("CAM_API_KEY")),
+		camprotocol.WithEndpoint("https://api.complete-cam.com"),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	// Intelligent routing
+	routingResult, err := cam.RouteRequest(camprotocol.RouteRequest{
+		Prompt: "Analyze this dataset",
+		Requirements: map[string]string{
+			"cost":        "optimize",
+			"performance": "balanced",
+		},
+	})
+
+	// Agent collaboration
+	collaboration, err := cam.InitiateCollaboration(camprotocol.CollaborationRequest{
+		Task:         "Complex data analysis and visualization",
+		Requirements: []string{"data-analyst", "visualization-expert"},
+		Decomposition: "auto",
+	})
+}
 ```
 
 ## 🏗️ Architecture
@@ -204,8 +271,12 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## 📄 License
 
-- **Community Edition**: Apache 2.0 License
-- **Professional/Enterprise**: Commons Clause License
+CAM Protocol is available under a dual-licensing model:
+
+- **Community Edition**: [Apache 2.0 License](LICENSE)
+- **Professional/Enterprise**: [Apache 2.0 with Commons Clause](LICENSE-ENTERPRISE)
+
+See our detailed [licensing documentation](LICENSES.md) for more information.
 
 ## 🆘 Support
 
