@@ -30,9 +30,9 @@ There are many ways to contribute to the CAM Protocol:
    ```bash
    npm install
    ```
-4. Create a new branch for your changes:
+4. Create a new branch for your changes from the `features` branch:
    ```bash
-   git checkout -b feature/your-feature-name
+   git checkout -b feature/your-feature-name features
    ```
 
 ### Making Changes
@@ -61,6 +61,17 @@ There are many ways to contribute to the CAM Protocol:
 2. Go to the original repository on GitHub and create a pull request.
 3. Fill out the pull request template with details about your changes.
 4. Wait for a maintainer to review your pull request.
+
+## Branching Policy
+
+We maintain a small set of long‑lived branches:
+
+- `main` – stable, production-ready code.
+- `development` – integration branch for the next release cycle.
+- `features` – base branch for feature development. Create your feature branches from here and open pull requests against `features`.
+- `hotfix` – optional branch for urgent patches that also merge back into `main` and `development`.
+
+Old remote branches should be cleaned up so only these branches remain active.
 
 ## Pull Request Guidelines
 
