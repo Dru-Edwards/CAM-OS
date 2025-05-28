@@ -240,4 +240,4 @@ After deployment, verify that everything is working correctly:
    - Database scaling for increased data volume
    - Caching for improved performance
 
-For additional support or questions, please contact support@cam-protocol.com or visit our [community forum](https://community.cam-protocol.com).
+For additional support or questions, please contact [support@cam-protocol.com](mailto:EdwardsTechPros@Outlook.com) or visit our [community forum](https://community.cam-protocol.com).
