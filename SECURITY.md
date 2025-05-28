@@ -145,4 +145,4 @@ The following security enhancements are planned for future releases:
 
 For security questions, concerns, or to report a vulnerability, please contact:
 
-- **Email**: EdwardsTechpros@Outlook.com
+- **Email**: [security@cam-protocol.com](mailto:EdwardsTechPros@Outlook.com)
