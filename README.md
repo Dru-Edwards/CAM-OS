@@ -1,7 +1,7 @@
 # Complete Arbitration Mesh (CAM)
 
 <div align="center">
-  <img src="docs/assets/logo.svg" alt="Complete Arbitration Mesh Logo" width="200"/>
+  <img src="docs/assets/cam 3.png" alt="Complete Arbitration Mesh Logo" width="200"/>
   <h3>Complete Arbitration Mesh (CAM) Protocol</h3>
   
   [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
