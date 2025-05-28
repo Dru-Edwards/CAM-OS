@@ -11,7 +11,7 @@ import { FastPathRouter } from '../routing/fastpath-router.js';
 import { CollaborationEngine } from '../collaboration/collaboration-engine.js';
 import { StateManager } from './state-manager.js';
 import { AuthenticationService } from './auth-service.js';
-import { Logger } from '../shared/logger.js';
+import { Logger, LogLevel } from '../shared/logger.js';
 import { Config } from '../shared/config.js';
 import type {
   AICoreRequest,
@@ -58,7 +58,7 @@ export class CompleteArbitrationMesh {
       apiVersion: '2.0.0'
     });
     
-    this.logger = new Logger('CompleteArbitrationMesh');
+    this.logger = new Logger(this.config.logLevel as LogLevel);
       this.stateManager = new StateManager();
     this.authService = new AuthenticationService({ 
       jwtSecret: options.jwtSecret || 'default-secret-change-in-production',
