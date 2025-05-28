@@ -7,9 +7,9 @@
   [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
   [![Version](https://img.shields.io/badge/Version-2.0.0-brightgreen.svg)](docs/RELEASE_NOTES.md)
   [![Compliance](https://img.shields.io/badge/Compliance-GDPR%20|%20CCPA-green.svg)](docs/legal/COMPLIANCE_CHECKLIST.md)
-  [![Build Status](https://img.shields.io/github/actions/workflow/status/cam-protocol/complete-arbitration-mesh/ci.yml?branch=main)](https://github.com/cam-protocol/complete-arbitration-mesh/actions/workflows/ci.yml)
-  [![Coverage](./badges/coverage-statements.svg)](./coverage)
-  [![SBOM](https://img.shields.io/badge/SBOM-CycloneDX-orange)](https://github.com/cam-protocol/complete-arbitration-mesh/actions/workflows/ci.yml)
+  [![Build Status](https://img.shields.io/github/workflow/status/Complete-Arbitration-Mesh/CAM-PROTOCOL/Continuous%20Integration?branch=main)](https://github.com/Complete-Arbitration-Mesh/CAM-PROTOCOL/actions/workflows/ci.yml)
+  [![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen.svg)](./badges/coverage-statements.svg)
+  [![SBOM](https://img.shields.io/badge/SBOM-CycloneDX-orange)](https://github.com/Complete-Arbitration-Mesh/CAM-PROTOCOL/actions/workflows/ci.yml)
   
   **Intelligent Orchestration and Collaboration for Modern AI Ecosystems**
 </div>

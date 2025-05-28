@@ -175,7 +175,18 @@
 
    END OF TERMS AND CONDITIONS
 
-   Copyright 2025 Complete Arbitration Mesh
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright 2025 CAM Protocol Team
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -188,18 +199,3 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-
-------------------------------------------------------------------------
-
-NOTE: The CAM Protocol is available under a dual-licensing model:
-
-1. Community Edition: Apache License 2.0 (this license)
-
-2. Professional and Enterprise Editions: Apache License 2.0 with Commons Clause
-   restriction. This means that while the code is open source, you cannot sell the
-   software or a hosted/managed service that provides the software's primary
-   functionality without a commercial license from the CAM Protocol team.
-
-The full text of the Commons Clause License is available in the LICENSE-ENTERPRISE file.
-
-For commercial licensing inquiries, please contact: edwardstechpros@outlook.com
