@@ -4,7 +4,7 @@
 
 The CAM Protocol team takes security vulnerabilities seriously. We appreciate your efforts to responsibly disclose your findings and will make every effort to acknowledge your contributions.
 
-To report a security issue, please email [security@cam-protocol.com](mailto:security@cam-protocol.com) with a description of the issue, the steps you took to create it, affected versions, and if known, mitigations. We will respond as quickly as possible to your report.
+To report a security issue, please email [security@cam-protocol.com](mailto:EdwardsTechPros@Outlook.com) with a description of the issue, the steps you took to create it, affected versions, and if known, mitigations. We will respond as quickly as possible to your report.
 
 Please **DO NOT** file a public GitHub issue about security vulnerabilities.
 
