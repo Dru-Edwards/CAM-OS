@@ -283,7 +283,7 @@ See our detailed [licensing documentation](LICENSES.md) for more information.
 
 ## 🆘 Support
 
-- **Community**: [GitHub Discussions](https://github.com/cam-protocol/complete-arbitration-mesh/discussions)
+- **Community**: [GitHub Discussions](https://github.com/orgs/Complete-Arbitration-Mesh/discussions)
 - **Professional**: Email support (business hours)
 - **Enterprise**: 24/7 premium support
 
