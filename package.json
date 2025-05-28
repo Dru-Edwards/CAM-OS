@@ -33,7 +33,8 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test",
     "test:coverage": "vitest run --coverage",
-    "generate:badges": "jest-coverage-badges --output ./badges",
+    "test:ci": "vitest run",
+    "generate:badges": "vitest run --coverage && node scripts/generate-coverage-badges.js",
     "test:performance": "ts-node scripts/run-benchmarks.ts",
     "benchmark:cost": "ts-node tests/benchmarks/cost-optimization-benchmark.ts",
     "benchmark:collaboration": "ts-node tests/benchmarks/multi-agent-collaboration-benchmark.ts",
@@ -69,7 +70,6 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.42.1",
-    "@types/cli-table3": "^0.5.2",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^20.11.30",
     "@types/stripe": "^8.0.417",
