@@ -55,6 +55,24 @@ npm install @cam-protocol/complete-arbitration-mesh
 docker run -p 8080:8080 cam-protocol/complete-arbitration-mesh:latest
 ```
 
+### Complete Environment with Docker Compose
+
+For a full-featured environment including CAM Protocol, a toy LLM, and monitoring:
+
+```bash
+# Clone the repository
+git clone https://github.com/cam-protocol/complete-arbitration-mesh.git
+
+# Start the quickstart environment
+cd complete-arbitration-mesh/examples/quickstart
+docker-compose up -d
+
+# Test it with a simple request
+curl localhost:8080/mesh/chat -d '{"message":"Hello CAM!"}' -H "Content-Type: application/json" -H "Authorization: Bearer demo-key-for-quickstart"
+```
+
+See [examples/quickstart](examples/quickstart) for more details.
+
 ### Try it in 30 Seconds
 
 ```bash

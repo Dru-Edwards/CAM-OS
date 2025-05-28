@@ -2,6 +2,16 @@
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
 
+CAM Protocol is available under a dual-licensing model:
+
+1. Community Edition: Licensed under Apache License 2.0 (this license)
+2. Enterprise Edition: Licensed under Apache License 2.0 with Commons Clause
+   (see LICENSE-ENTERPRISE for additional terms)
+
+For full details on the licensing model, please see:
+- LICENSE-CORE: Apache License 2.0 (this file)
+- LICENSE-ENTERPRISE: Apache License 2.0 with Commons Clause
+
    TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 
    1. Definitions.
