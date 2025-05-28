@@ -10,9 +10,11 @@
   [![Build Status](https://img.shields.io/github/workflow/status/Complete-Arbitration-Mesh/CAM-PROTOCOL/Continuous%20Integration?branch=main)](https://github.com/Complete-Arbitration-Mesh/CAM-PROTOCOL/actions/workflows/ci.yml)
   [![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen.svg)](./badges/coverage-statements.svg)
   [![SBOM](https://img.shields.io/badge/SBOM-CycloneDX-orange)](https://github.com/Complete-Arbitration-Mesh/CAM-PROTOCOL/actions/workflows/ci.yml)
-  
+
   **Intelligent Orchestration and Collaboration for Modern AI Ecosystems**
 </div>
+
+> **Disclaimer:** CAM Protocol is currently in a **pre-release** state and some components are still under development. See [ROADMAP.md](ROADMAP.md) for expected timelines and planned features.
 
 ## 🌟 Overview
 
