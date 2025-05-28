@@ -145,6 +145,4 @@ The following security enhancements are planned for future releases:
 
 For security questions, concerns, or to report a vulnerability, please contact:
 
-- **Email**: security@cam-protocol.com
-- **Security Page**: https://cam-protocol.com/security
-- **Bug Bounty Program**: https://hackerone.com/cam-protocol
+- **Email**: EdwardsTechpros@Outlook.com
