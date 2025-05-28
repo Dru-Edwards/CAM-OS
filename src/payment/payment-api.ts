@@ -22,7 +22,7 @@ export class PaymentAPI {
   private subscriptionManager: SubscriptionManager;
 
   constructor(options: PaymentAPIOptions) {
-    this.logger = new Logger('PaymentAPI');
+    this.logger = new Logger('info'); // Initialize with a valid LogLevel
     this.stripeService = options.stripeService;
     this.subscriptionManager = options.subscriptionManager;
     

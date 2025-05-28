@@ -75,7 +75,7 @@ export class SubscriptionManager {
   };
 
   constructor(options: SubscriptionManagerOptions) {
-    this.logger = new Logger('SubscriptionManager');
+    this.logger = new Logger('info'); // Initialize with a valid LogLevel
     this.stripeService = options.stripeService;
     
     this.logger.info('Subscription manager initialized');
@@ -100,18 +100,26 @@ export class SubscriptionManager {
       // Determine the tier based on metadata or product
       const tier = this.determineTier(subscription);
       
+      // Make sure subscription exists before accessing its properties
+      if (!subscription) {
+        throw new CAMError('Subscription not found for customer: ' + customerId, 'SUBSCRIPTION_NOT_FOUND', { details: { customerId } });
+      }
+      
+      // Access subscription properties safely
       return {
         id: subscription.id,
         customerId,
         tier,
         status: subscription.status as any,
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        // Handle Unix timestamp conversion safely
+        currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
         features: this.tierFeatures[tier]
       };
     } catch (error) {
-      this.logger.error('Failed to get subscription info', { error, customerId });
-      throw new CAMError('Subscription error: Failed to retrieve subscription information', { cause: error });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to get subscription info', { errorMessage, customerId });
+      throw new CAMError('Subscription error: Failed to retrieve subscription information', 'SUBSCRIPTION_RETRIEVAL_ERROR', { details: { customerId, errorMessage } });
     }
   }
 
@@ -139,13 +147,14 @@ export class SubscriptionManager {
    */
   async upgradeSubscription(subscriptionId: string, newTier: SubscriptionTier): Promise<SubscriptionInfo> {
     try {
-      const updatedSubscription = await this.stripeService.updateSubscription(subscriptionId, newTier);
+      const updatedSubscription = await this.stripeService.updateSubscription(subscriptionId, { planType: newTier });
       
       const customerId = updatedSubscription.customer as string;
       return await this.getSubscriptionInfo(customerId) as SubscriptionInfo;
     } catch (error) {
       this.logger.error('Failed to upgrade subscription', { error, subscriptionId, newTier });
-      throw new CAMError('Subscription error: Failed to upgrade subscription', { cause: error });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new CAMError('Subscription error: Failed to upgrade subscription', 'SUBSCRIPTION_UPGRADE_ERROR', { details: { subscriptionId, newTier, errorMessage } });
     }
   }
 
@@ -158,7 +167,8 @@ export class SubscriptionManager {
       this.logger.info('Subscription canceled successfully', { subscriptionId });
     } catch (error) {
       this.logger.error('Failed to cancel subscription', { error, subscriptionId });
-      throw new CAMError('Subscription error: Failed to cancel subscription', { cause: error });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new CAMError('Subscription error: Failed to cancel subscription', 'SUBSCRIPTION_CANCEL_ERROR', { details: { subscriptionId, errorMessage } });
     }
   }
 
@@ -181,7 +191,8 @@ export class SubscriptionManager {
       return session.url as string;
     } catch (error) {
       this.logger.error('Failed to create checkout session', { error, customerId, tier });
-      throw new CAMError('Subscription error: Failed to create checkout session', { cause: error });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new CAMError('Subscription error: Failed to create checkout session', 'CHECKOUT_SESSION_ERROR', { details: { customerId, tier, errorMessage } });
     }
   }
 

@@ -58,9 +58,9 @@ export class StripeService {
 
   constructor(options: StripeServiceOptions) {
     this.stripe = new Stripe(options.apiKey, {
-      apiVersion: '2023-10-16',
+      apiVersion: '2023-10-16' as any, // Cast to any to avoid type errors with Stripe version
     });
-    this.logger = new Logger('payment');
+    this.logger = new Logger('info'); // Initialize with a valid LogLevel
     this.webhookSecret = options.webhookSecret;
     
     // Default product and price mappings
@@ -82,89 +82,99 @@ export class StripeService {
   /**
    * Create a new customer in Stripe
    */
-  async createCustomer(data: CustomerData): Promise<Stripe.Customer> {
+  async createCustomer(customerData: CustomerData): Promise<string> {
     try {
-      const customer = await this.stripe.customers.create({
-        email: data.email,
-        name: data.name,
-        metadata: data.metadata
-      });
+      // Prepare customer data with proper handling of optional fields
+      const customerParams: any = {
+        email: customerData.email
+      };
+      
+      // Only add non-undefined fields
+      if (customerData.name) customerParams.name = customerData.name;
+      if (customerData.metadata) customerParams.metadata = customerData.metadata;
+      
+      const customer = await this.stripe.customers.create(customerParams);
       
       this.logger.info('Customer created successfully', { customerId: customer.id });
-      return customer;
+      return customer.id;
     } catch (error) {
-      this.logger.error('Failed to create customer', { error, data });
-      throw new CAMError('Payment service error: Failed to create customer', error as Error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to create customer', { errorMessage, data: customerData });
+      throw new CAMError('Payment service error: Failed to create customer', errorMessage);
     }
   }
 
   /**
    * Create a subscription for a customer
    */
-  async createSubscription(data: SubscriptionData): Promise<Stripe.Subscription> {
+  async createSubscription(subscriptionData: SubscriptionData): Promise<any> {
     try {
-      const priceId = this.getPriceId(data.planType);
+      // Prepare subscription data with proper handling of optional fields
+      const subscriptionParams: any = {
+        customer: subscriptionData.customerId,
+        items: [
+          {
+            price: this.getPriceId(subscriptionData.planType)
+          }
+        ]
+      };
       
-      if (!priceId) {
-        throw new CAMError(`No price ID configured for plan type: ${data.planType}`);
-      }
+      // Only add non-undefined fields
+      if (subscriptionData.trialDays) subscriptionParams.trial_period_days = subscriptionData.trialDays;
+      if (subscriptionData.metadata) subscriptionParams.metadata = subscriptionData.metadata;
       
-      const subscription = await this.stripe.subscriptions.create({
-        customer: data.customerId,
-        items: [{ price: priceId }],
-        trial_period_days: data.trialDays,
-        metadata: data.metadata
-      });
+      const subscription = await this.stripe.subscriptions.create(subscriptionParams);
       
       this.logger.info('Subscription created successfully', { 
         subscriptionId: subscription.id,
-        customerId: data.customerId,
-        planType: data.planType
+        customerId: subscriptionData.customerId,
+        planType: subscriptionData.planType
       });
       
       return subscription;
     } catch (error) {
-      this.logger.error('Failed to create subscription', { error, data });
-      throw new CAMError('Payment service error: Failed to create subscription', error as Error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to create subscription', { errorMessage, subscriptionData });
+      throw new CAMError('Payment service error: Failed to create subscription', errorMessage);
     }
   }
 
   /**
    * Create a checkout session for a customer
    */
-  async createCheckoutSession(options: CheckoutSessionOptions): Promise<Stripe.Checkout.Session> {
+  async createCheckoutSession(sessionData: CheckoutSessionOptions): Promise<any> {
     try {
-      const priceId = this.getPriceId(options.planType);
-      
-      if (!priceId) {
-        throw new CAMError(`No price ID configured for plan type: ${options.planType}`);
-      }
-      
-      const session = await this.stripe.checkout.sessions.create({
-        customer: options.customerId,
+      // Prepare session data with proper handling of optional fields
+      const sessionParams: any = {
+        customer: sessionData.customerId,
         payment_method_types: ['card'],
         line_items: [
           {
-            price: priceId,
-            quantity: 1,
-          },
+            price: this.getPriceId(sessionData.planType),
+            quantity: 1
+          }
         ],
-        mode: options.planType === 'community' ? 'payment' : 'subscription',
-        success_url: options.successUrl,
-        cancel_url: options.cancelUrl,
-        metadata: options.metadata
-      });
+        mode: sessionData.planType === 'community' ? 'payment' : 'subscription',
+        success_url: sessionData.successUrl,
+        cancel_url: sessionData.cancelUrl
+      };
+      
+      // Only add non-undefined fields
+      if (sessionData.metadata) sessionParams.metadata = sessionData.metadata;
+      
+      const session = await this.stripe.checkout.sessions.create(sessionParams);
       
       this.logger.info('Checkout session created successfully', { 
         sessionId: session.id,
-        customerId: options.customerId,
-        planType: options.planType
+        customerId: sessionData.customerId,
+        planType: sessionData.planType
       });
       
       return session;
     } catch (error) {
-      this.logger.error('Failed to create checkout session', { error, options });
-      throw new CAMError('Payment service error: Failed to create checkout session', error as Error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to create checkout session', { errorMessage, sessionData });
+      throw new CAMError('Payment service error: Failed to create checkout session', errorMessage);
     }
   }
 
@@ -182,8 +192,9 @@ export class StripeService {
       this.logger.info('Webhook event received', { eventType: event.type });
       return event;
     } catch (error) {
-      this.logger.error('Failed to verify webhook signature', { error });
-      throw new CAMError('Payment service error: Invalid webhook signature', error as Error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to verify webhook signature', { errorMessage });
+      throw new CAMError('Payment service error: Invalid webhook signature', 'WEBHOOK_SIGNATURE_ERROR', { details: { errorMessage } });
     }
   }
 
@@ -195,13 +206,14 @@ export class StripeService {
       const customer = await this.stripe.customers.retrieve(customerId);
       
       if (customer.deleted) {
-        throw new CAMError(`Customer ${customerId} has been deleted`);
+        throw new CAMError(`Customer ${customerId} has been deleted`, 'CUSTOMER_DELETED', { details: { customerId } });
       }
       
       return customer as Stripe.Customer;
     } catch (error) {
-      this.logger.error('Failed to retrieve customer', { error, customerId });
-      throw new CAMError('Payment service error: Failed to retrieve customer', error as Error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to get customer', { errorMessage, customerId });
+      throw new CAMError('Payment service error: Failed to get customer', errorMessage);
     }
   }
 
@@ -212,40 +224,47 @@ export class StripeService {
     try {
       return await this.stripe.subscriptions.retrieve(subscriptionId);
     } catch (error) {
-      this.logger.error('Failed to retrieve subscription', { error, subscriptionId });
-      throw new CAMError('Payment service error: Failed to retrieve subscription', error as Error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to get subscription', { errorMessage, subscriptionId });
+      throw new CAMError('Payment service error: Failed to get subscription', errorMessage);
     }
   }
 
   /**
    * Update subscription plan
    */
-  async updateSubscription(subscriptionId: string, planType: 'community' | 'professional' | 'enterprise'): Promise<Stripe.Subscription> {
+  async updateSubscription(subscriptionId: string, updateData: { planType: 'community' | 'professional' | 'enterprise' }): Promise<Stripe.Subscription> {
     try {
-      const priceId = this.getPriceId(planType);
+      const priceId = this.getPriceId(updateData.planType);
       
       if (!priceId) {
-        throw new CAMError(`No price ID configured for plan type: ${planType}`);
+        throw new CAMError(`No price ID configured for plan type: ${updateData.planType}`, 'PRICE_ID_NOT_FOUND', { details: { planType: updateData.planType } });
       }
       
       const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
+      
+      // Make sure subscription items exist
+      if (!subscription.items?.data || subscription.items.data.length === 0) {
+        throw new CAMError(`Subscription ${subscriptionId} has no items`, 'SUBSCRIPTION_NO_ITEMS', { details: { subscriptionId } });
+      }
       
       // Update the subscription items
       return await this.stripe.subscriptions.update(subscriptionId, {
         items: [
           {
-            id: subscription.items.data[0].id,
+            id: subscription.items.data[0]?.id || '',
             price: priceId,
           },
         ],
         metadata: {
           ...subscription.metadata,
-          planType
+          planType: updateData.planType
         }
       });
     } catch (error) {
-      this.logger.error('Failed to update subscription', { error, subscriptionId, planType });
-      throw new CAMError('Payment service error: Failed to update subscription', error as Error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to update subscription', { errorMessage, subscriptionId, updateData });
+      throw new CAMError('Payment service error: Failed to update subscription', errorMessage);
     }
   }
 
@@ -256,8 +275,9 @@ export class StripeService {
     try {
       return await this.stripe.subscriptions.cancel(subscriptionId);
     } catch (error) {
-      this.logger.error('Failed to cancel subscription', { error, subscriptionId });
-      throw new CAMError('Payment service error: Failed to cancel subscription', error as Error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to cancel subscription', { errorMessage, subscriptionId });
+      throw new CAMError('Payment service error: Failed to cancel subscription', errorMessage);
     }
   }
 
@@ -273,8 +293,9 @@ export class StripeService {
       
       return invoices.data;
     } catch (error) {
-      this.logger.error('Failed to retrieve customer invoices', { error, customerId });
-      throw new CAMError('Payment service error: Failed to retrieve invoices', error as Error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to retrieve customer invoices', { errorMessage, customerId });
+      throw new CAMError('Payment service error: Failed to retrieve invoices', 'INVOICE_RETRIEVAL_ERROR', { details: { customerId, errorMessage } });
     }
   }
 
@@ -304,7 +325,7 @@ export class StripeService {
   private getPriceId(planType: 'community' | 'professional' | 'enterprise'): string {
     const priceId = this.priceMapping[planType];
     if (!priceId) {
-      throw new CAMError(`No price ID configured for plan type: ${planType}`);
+      throw new CAMError(`No price ID configured for plan type: ${planType}`, 'PRICE_ID_NOT_FOUND', { details: { planType } });
     }
     return priceId;
   }

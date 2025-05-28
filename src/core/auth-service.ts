@@ -26,7 +26,7 @@ export class AuthenticationService {
   constructor(config: AuthConfig) {
     this.jwtSecret = config.jwtSecret || this.generateSecret();
     this.tokenExpiry = config.tokenExpiry || '24h';
-    this.logger = new Logger('AuthenticationService');
+    this.logger = new Logger('info'); // Initialize with a valid LogLevel
     
     this.logger.info('Authentication Service initialized', {
       tokenExpiry: this.tokenExpiry
@@ -182,11 +182,12 @@ export class AuthenticationService {
         newTokenId: newToken.id
       });
 
+      // Ensure permissions is always defined or explicitly optional
       return {
         success: true,
         token: newToken,
         userInfo: validation.userInfo,
-        permissions: validation.permissions,
+        permissions: validation.permissions || [], // Provide empty array as fallback
         expiresAt: newToken.expiresAt
       };
 

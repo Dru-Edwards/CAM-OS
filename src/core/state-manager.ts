@@ -22,7 +22,7 @@ export class StateManager {
 
   constructor(config: StateManagerConfig = {}) {
     this.maxSnapshots = config.maxSnapshots || 100;
-    this.logger = new Logger('StateManager');
+    this.logger = new Logger('info'); // Initialize with a valid LogLevel
     
     this.logger.info('State Manager initialized', {
       maxSnapshots: this.maxSnapshots
@@ -40,10 +40,11 @@ export class StateManager {
         lastUpdated: new Date().toISOString()
       });
 
+      // Only emit state change if there's a previous state or we're setting a new state
       this.emitStateChange({
         type: 'route_state_changed',
         routeId,
-        previousState,
+        previousState: previousState || state, // Ensure previousState is never undefined
         newState: state,
         timestamp: new Date().toISOString()
       });
@@ -78,7 +79,7 @@ export class StateManager {
       this.emitStateChange({
         type: 'collaboration_state_changed',
         sessionId,
-        previousState,
+        previousState: previousState || state, // Ensure previousState is never undefined
         newState: state,
         timestamp: new Date().toISOString()
       });

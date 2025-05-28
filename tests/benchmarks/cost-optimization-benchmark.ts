@@ -101,7 +101,7 @@ async function runBenchmark() {
   
   for (let i = 0; i < NUM_REQUESTS; i++) {
     const promptIndex = i % TEST_PROMPTS.length;
-    const prompt = TEST_PROMPTS[promptIndex];
+    const prompt = TEST_PROMPTS[promptIndex] || 'Default prompt if undefined';
     
     // Direct call to OpenAI (simulating standard usage)
     const directStart = Date.now();

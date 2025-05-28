@@ -1,11 +1,21 @@
 // Test setup file
 import 'reflect-metadata';
 
+// Add Jest type declarations
+declare global {
+  namespace NodeJS {
+    interface Global {
+      console: Console;
+    }
+  }
+  const jest: any;
+}
+
 // Mock environment variables
-process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = 'test-jwt-secret';
-process.env.OPENAI_API_KEY = 'sk-test-openai-key';
-process.env.ANTHROPIC_API_KEY = 'sk-ant-test-anthropic-key';
+process.env['NODE_ENV'] = 'test';
+process.env['JWT_SECRET'] = 'test-jwt-secret';
+process.env['OPENAI_API_KEY'] = 'sk-test-openai-key';
+process.env['ANTHROPIC_API_KEY'] = 'sk-ant-test-anthropic-key';
 
 // Global test configuration
 global.console = {

@@ -200,8 +200,8 @@ export class CAMClient {
 
     for (let attempt = 0; attempt < this.retries; attempt++) {
       try {
-        const response = await this.executeRequest(method, url, data);
-        return response;
+        const response = await this.executeRequest<T>(method, url, data);
+        return response as T;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Unknown error');
         
@@ -259,7 +259,7 @@ export class CAMClient {
     const result = await response.json();
     this.logger.debug('HTTP request successful', { status: response.status });
     
-    return result;
+    return result as T;
   }
 
   private sleep(ms: number): Promise<void> {

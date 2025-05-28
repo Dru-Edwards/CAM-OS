@@ -21,7 +21,7 @@ export class CollaborationEngine {
   private activeSessions: Map<string, CollaborationSession>;
 
   constructor() {
-    this.logger = new Logger();
+    this.logger = new Logger('info'); // Initialize with a valid LogLevel
     this.activeSessions = new Map();
     this.logger.info('Collaboration Engine initialized');
   }
@@ -94,8 +94,8 @@ export class CollaborationEngine {
         description: `Analyze requirements for: ${task.description}`,
         requiredCapabilities: ['analysis'],
         dependencies: [],
-        estimatedDuration: 30000,
-        assignedAgent: undefined
+        estimatedDuration: 30000
+        // assignedAgent is optional, so we can omit it
       },
       {
         id: `${task.id}-component-2`,
@@ -103,8 +103,8 @@ export class CollaborationEngine {
         description: `Execute main task: ${task.description}`,
         requiredCapabilities: task.requirements,
         dependencies: [`${task.id}-component-1`],
-        estimatedDuration: 60000,
-        assignedAgent: undefined
+        estimatedDuration: 60000
+        // assignedAgent is optional, so we can omit it
       }
     ];
   }
