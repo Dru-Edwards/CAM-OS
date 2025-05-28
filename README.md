@@ -202,6 +202,8 @@ The Complete Arbitration Mesh integrates two powerful systems:
 
 ## 📖 Documentation
 
+For a complete overview of all documentation, see our [Documentation Index](docs/index.md).
+
 ### Guides
 - [Quick Start Guide](docs/guides/quick-start.md)
 - [Deployment Readiness](docs/DEPLOYMENT_READINESS.md)
@@ -218,6 +220,7 @@ The Complete Arbitration Mesh integrates two powerful systems:
 - [GDPR Compliance](docs/legal/GDPR_COMPLIANCE.md)
 - [CCPA Compliance](docs/legal/CCPA_COMPLIANCE.md)
 - [Security Policy](docs/legal/SECURITY_POLICY.md)
+- [Security Pre-Launch Checklist](docs/security/SECURITY_CHECKLIST.md)
 - [Data Processing Agreement](docs/legal/DATA_PROCESSING_AGREEMENT.md)
 
 ## 🔧 Development
