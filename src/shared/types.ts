@@ -155,6 +155,8 @@ export interface StateChangeEvent {
 export interface StateManagerConfig {
   maxSnapshots?: number;
   cleanupInterval?: number;
+  backend?: 'memory' | 'file' | 'redis';
+  storagePath?: string;
 }
 
 // =========================================================================
