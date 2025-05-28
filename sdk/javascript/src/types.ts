@@ -51,6 +51,17 @@ export interface Agent {
   priority?: number;
 }
 
+export interface AgentConfig {
+  /** Agent type/capability */
+  type: string;
+
+  /** Specific role in collaboration */
+  role?: string;
+
+  /** Agent-specific configuration */
+  config?: Record<string, any>;
+}
+
 // Configuration interfaces
 export interface MetricsConfig {
   enabled: boolean;
@@ -262,26 +273,49 @@ export interface RoutingDetails {
 }
 
 // Collaboration types
-export interface CollaborationWorkflow {
-  /** Main task description */
-  task: string;
-  
-  /** Required agents */
-  agents: string[] | AgentConfig[];
+export interface RouteResponse {
+  /** Generated response text */
+  text: string;
+
+  /** Selected provider */
+  provider: string;
+
   /** Selected model */
   model: string;
-  
+
   /** Usage information */
   usage: UsageInfo;
-  
+
   /** Routing details */
   routing_details: RoutingDetails;
-  
+
   /** Unique request identifier */
   request_id: string;
-  
+
   /** Response metadata */
   metadata?: Record<string, any>;
+}
+
+export interface CollaborationResponse {
+  result: {
+    text: string;
+    confidence: number;
+    consensus: number;
+  };
+  process: {
+    workflow: string;
+    iterations: number;
+    agents_used: string[];
+    duration_ms: number;
+  };
+  contributions: Array<{
+    agent: string;
+    role: string;
+    contribution: string;
+    confidence: number;
+    timestamp: string;
+  }>;
+  request_id: string;
 }
 
 // Streaming types
