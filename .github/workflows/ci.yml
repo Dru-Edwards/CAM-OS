@@ -55,6 +55,16 @@ jobs:
     - name: Generate coverage report
       run: npm run test:coverage
 
+    - name: Generate coverage badges
+      run: npm run generate:badges
+      
+    - name: Upload coverage badges
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-badges
+        path: ./badges/
+        retention-days: 90
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
@@ -213,6 +223,7 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        target: prod
 
   # Performance Testing
   performance:

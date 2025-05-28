@@ -24,7 +24,6 @@
         "eamodio.gitlens",
         "ms-azuretools.vscode-docker",
         "github.vscode-github-actions",
-        "github.copilot",
         "ms-vsliveshare.vsliveshare",
         "redhat.vscode-yaml",
         "yzhang.markdown-all-in-one",
@@ -36,7 +35,7 @@
         "editor.codeActionsOnSave": {
           "source.fixAll.eslint": true
         },
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.defaultFormatter": "vscode.typescript-language-features",
         "eslint.validate": [
           "javascript",
           "typescript"

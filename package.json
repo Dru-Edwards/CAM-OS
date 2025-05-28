@@ -33,6 +33,7 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test",
     "test:coverage": "vitest run --coverage",
+    "generate:badges": "jest-coverage-badges --output ./badges",
     "test:performance": "ts-node scripts/run-benchmarks.ts",
     "benchmark:cost": "ts-node tests/benchmarks/cost-optimization-benchmark.ts",
     "benchmark:collaboration": "ts-node tests/benchmarks/multi-agent-collaboration-benchmark.ts",
