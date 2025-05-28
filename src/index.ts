@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // Main entry point for the Complete Arbitration Mesh
 export { CompleteArbitrationMesh } from './core/complete-arbitration-mesh';
 export { CAMClient } from './client/cam-client';

@@ -130,7 +130,7 @@ jobs:
       run: npm audit --audit-level=high
 
     - name: Generate Software Bill of Materials (SBOM)
-      uses: anchore/sbom-action@v0
+      uses: anchore/sbom-action@v1
       with:
         format: cyclonedx-json
         output-file: ./sbom.json

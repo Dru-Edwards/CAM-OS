@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Complete Arbitration Mesh - Core Integration
  * 
