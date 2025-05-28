@@ -40,7 +40,7 @@ The Professional and Enterprise Editions are licensed under the [Apache License 
 
 ## Commercial Licensing
 
-For commercial licensing inquiries, please contact: [edwardstechpros@outlook.com](mailto:edwardstechpros@outlook.com)
+For commercial licensing inquiries, please contact: [sales@cam-protocol.com](mailto:EdwardsTechPros@Outlook.com)
 
 ## Questions
 
