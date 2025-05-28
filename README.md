@@ -18,6 +18,8 @@
 
 **Production Status:** CAM Protocol is **production ready** as of the [v2.0.0 release](CHANGELOG.md) on May 28, 2025.
 
+**Security Warning:** A number of security hardening tasks remain open. Until the items listed in the [Security Pre-Launch Checklist](docs/security/SECURITY_CHECKLIST.md) are completed, CAM should not be considered production ready.
+
 
 ## 🌟 Overview
 
@@ -261,6 +263,8 @@ The Complete Arbitration Mesh takes security seriously:
 - **End-to-End Encryption** - All communications are encrypted
 - **Audit Logging** - Comprehensive audit trails for compliance
 - **FIPS Compliance** - Available in Enterprise tier
+
+**Note:** The platform is still undergoing security hardening. Please review the [Security Pre-Launch Checklist](docs/security/SECURITY_CHECKLIST.md) for outstanding tasks before deploying CAM in a sensitive environment.
 
 ## 📋 Subscription Tiers
 
