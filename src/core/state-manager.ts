@@ -1,12 +1,18 @@
 import { Logger } from '../shared/logger.js';
 import { CAMError } from '../shared/errors.js';
-import { 
-  RouteState, 
-  CollaborationState, 
+import {
+  RouteState,
+  CollaborationState,
   StateSnapshot,
   StateChangeEvent,
-  StateManagerConfig 
+  StateManagerConfig
 } from '../shared/types.js';
+import {
+  PersistenceAdapter,
+  InMemoryPersistence,
+  FilePersistence,
+  PersistedState
+} from './persistence.js';
 
 /**
  * State Manager for Complete Arbitration Mesh
@@ -19,13 +25,26 @@ export class StateManager {
   private listeners: Set<(event: StateChangeEvent) => void> = new Set();
   private readonly maxSnapshots: number;
   private readonly logger: Logger;
+  private readonly persistence: PersistenceAdapter;
 
   constructor(config: StateManagerConfig = {}) {
     this.maxSnapshots = config.maxSnapshots || 100;
     this.logger = new Logger('info'); // Initialize with a valid LogLevel
-    
+    if (config.backend === 'file') {
+      const path = config.storagePath || './state-data.json';
+      this.persistence = new FilePersistence(path);
+    } else {
+      this.persistence = new InMemoryPersistence();
+    }
+
+    const persisted = this.persistence.load();
+    this.routeStates = new Map(persisted.routeStates);
+    this.collaborationStates = new Map(persisted.collaborationStates);
+    this.snapshots = persisted.snapshots || [];
+
     this.logger.info('State Manager initialized', {
-      maxSnapshots: this.maxSnapshots
+      maxSnapshots: this.maxSnapshots,
+      backend: config.backend || 'memory'
     });
   }
 
@@ -50,7 +69,8 @@ export class StateManager {
       });
 
       this.createSnapshot();
-      
+      this.persist();
+
       this.logger.debug('Route state updated', { routeId, state });
     } catch (error) {
       this.logger.error('Failed to set route state', { routeId, error });
@@ -85,7 +105,8 @@ export class StateManager {
       });
 
       this.createSnapshot();
-      
+      this.persist();
+
       this.logger.debug('Collaboration state updated', { sessionId, state });
     } catch (error) {
       this.logger.error('Failed to set collaboration state', { sessionId, error });
@@ -152,6 +173,7 @@ export class StateManager {
     if (cleanedCount > 0) {
       this.logger.info('Cleaned up expired states', { cleanedCount });
       this.createSnapshot();
+      this.persist();
     }
   }
 
@@ -171,6 +193,8 @@ export class StateManager {
     if (this.snapshots.length > this.maxSnapshots) {
       this.snapshots = this.snapshots.slice(-this.maxSnapshots);
     }
+
+    this.persist();
   }
 
   /**
@@ -211,6 +235,7 @@ export class StateManager {
         snapshotTimestamp: timestamp
       });
 
+      this.persist();
       this.logger.info('State restored from snapshot', { timestamp });
       return true;
     } catch (error) {
@@ -275,6 +300,17 @@ export class StateManager {
     return size;
   }
 
+  /** Persist current state using configured backend */
+  private persist(): void {
+    const data: PersistedState = {
+      routeStates: Array.from(this.routeStates.entries()),
+      collaborationStates: Array.from(this.collaborationStates.entries()),
+      snapshots: this.snapshots
+    };
+
+    this.persistence.save(data);
+  }
+
   /**
    * Shutdown and cleanup
    */
@@ -283,7 +319,9 @@ export class StateManager {
     this.collaborationStates.clear();
     this.snapshots.length = 0;
     this.listeners.clear();
-    
+
+    this.persist();
+
     this.logger.info('State Manager shutdown complete');
   }
 
