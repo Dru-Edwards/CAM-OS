@@ -16,6 +16,7 @@ import type {
 import type { ProviderConfig } from '../shared/config.js';
 import fs from 'fs';
 import path from 'path';
+import fetch from 'node-fetch';
 
 export class FastPathRouter {
   private logger: Logger;
@@ -538,9 +539,7 @@ export class FastPathRouter {
           temperature: request.temperature ?? 0.7,
           max_tokens: request.maxTokens
         })
-      });
-
-      const data = await res.json();
+      });      const data = await res.json() as any;
       if (!res.ok) {
         throw new CAMError('PROVIDER_ERROR', data.error?.message || 'OpenAI request failed');
       }
@@ -591,9 +590,7 @@ export class FastPathRouter {
           temperature: request.temperature ?? 0.7,
           max_tokens: request.maxTokens
         })
-      });
-
-      const data = await res.json();
+      });      const data = await res.json() as any;
       if (!res.ok) {
         throw new CAMError('PROVIDER_ERROR', data.error?.message || 'Anthropic request failed');
       }
@@ -642,9 +639,7 @@ export class FastPathRouter {
           temperature: request.temperature ?? 0.7,
           generationConfig: { maxOutputTokens: request.maxTokens }
         })
-      });
-
-      const data = await res.json();
+      });      const data = await res.json() as any;
       if (!res.ok) {
         throw new CAMError('PROVIDER_ERROR', data.error?.message || 'Google request failed');
       }
@@ -693,9 +688,7 @@ export class FastPathRouter {
           temperature: request.temperature ?? 0.7,
           max_tokens: request.maxTokens
         })
-      });
-
-      const data = await res.json();
+      });      const data = await res.json() as any;
       if (!res.ok) {
         throw new CAMError('PROVIDER_ERROR', data.error?.message || 'Azure request failed');
       }

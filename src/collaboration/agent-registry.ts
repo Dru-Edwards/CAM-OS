@@ -84,10 +84,9 @@ export class AgentRegistry {
           a.capabilities.skills.includes(req) ||
           a.capabilities.specializations.includes(req)
         )
-        .sort((a, b) => b.capabilities.quality - a.capabilities.quality);
-      if (candidates.length > 0) {
+        .sort((a, b) => b.capabilities.quality - a.capabilities.quality);      if (candidates.length > 0) {
         const candidate = candidates[0];
-        if (!added.has(candidate.id)) {
+        if (candidate && !added.has(candidate.id)) {
           matched.push(candidate);
           added.add(candidate.id);
         }

@@ -14,9 +14,9 @@ process.env['AZURE_OPENAI_ENDPOINT'] = 'https://test-azure-openai-endpoint.com';
 process.env['LOG_LEVEL'] = 'error';
 
 // Polyfill crypto for Node.js environments to fix compatibility issues
-if (typeof global.crypto === 'undefined') {
+if (typeof (global as any).crypto === 'undefined') {
   // Use Node.js crypto module as a polyfill for the Web Crypto API
-  global.crypto = {
+  (global as any).crypto = {
     // Implement getRandomValues using Node.js crypto
     getRandomValues: function(array: Uint8Array): Uint8Array {
       const bytes = nodeCrypto.randomBytes(array.length);
