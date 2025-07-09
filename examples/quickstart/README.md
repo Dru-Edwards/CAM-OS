@@ -1,30 +1,26 @@
-# CAM Protocol Quickstart
+# CAM-OS Quickstart
 
-This quickstart example provides a complete environment for testing and exploring the CAM Protocol with minimal setup.
+This quickstart example provides a complete environment for testing and exploring CAM-OS with minimal setup.
 
 ## What's Included
 
-- **CAM Protocol Core Service**: The main arbitration and routing service
-- **Toy LLM Service**: A simple mock LLM service for demonstration purposes
-- **Redis**: For caching and message brokering
-- **PostgreSQL**: For persistent storage
-- **Prometheus**: For metrics collection
-- **Grafana**: For visualization and monitoring
+- **CAM-OS Kernel**: The main cognitive operating system kernel
+- **Redis Backend**: For distributed context storage
+- **Toy LLM Service**: Example AI service for testing
+- **Monitoring Stack**: Prometheus and Grafana for observability
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
+- Docker and Docker Compose
+- 4GB+ available RAM
+- Available ports: 50051, 6379, 8080, 3000, 9090
 
-- Docker and Docker Compose installed on your system
-- 4GB+ of available RAM
-- 10GB+ of available disk space
-
-### Quick Start
+## Quick Start
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/cam-protocol/complete-arbitration-mesh.git
-   cd complete-arbitration-mesh/examples/quickstart
+   git clone https://github.com/Dru-Edwards/CAM-OS.git
+   cd CAM-OS/examples/quickstart
    ```
 
 2. Start the environment:
@@ -32,54 +28,81 @@ This quickstart example provides a complete environment for testing and explorin
    docker-compose up -d
    ```
 
-3. Verify all services are running:
+3. Wait for services to be ready (about 30 seconds)
+
+4. Test the CAM-OS API:
    ```bash
-   docker-compose ps
+   curl -X POST http://localhost:50051/api/v1/syscall \
+   -H "Content-Type: application/json" \
+   -d '{"verb": "think", "payload": "Hello, CAM-OS!"}'
    ```
 
-4. Test the CAM Protocol API:
-   ```bash
-   curl -X POST http://localhost:8080/mesh/chat \
-     -H "Content-Type: application/json" \
-     -H "Authorization: Bearer demo-key-for-quickstart" \
-     -d '{"message": "Hello, CAM Protocol!"}'
-   ```
+## Access Points
 
-## Accessing the Services
-
-- **CAM Protocol API**: http://localhost:8080
-- **Toy LLM Service**: http://localhost:3000
-- **Grafana Dashboard**: http://localhost:3001 (admin/admin)
+- **CAM-OS Kernel gRPC**: localhost:50051
+- **Redis Backend**: localhost:6379
+- **Toy LLM Service**: http://localhost:8080
 - **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3000 (admin/admin)
 
-## Exploring the Dashboard
+## Monitoring
 
-1. Open Grafana at http://localhost:3001
-2. Log in with username `admin` and password `admin`
-3. Navigate to the "CAM Protocol Overview" dashboard
-4. Generate some traffic using the test command above to see metrics in action
+1. Open Grafana at http://localhost:3000
+2. Login with admin/admin
+3. Navigate to the "CAM-OS Overview" dashboard
+4. Explore the cognitive syscall metrics
 
-## Next Steps
+## Testing Cognitive Syscalls
 
-Once you're familiar with the basic setup, you can:
+### Think Syscall
+```bash
+grpcurl -plaintext -d '{"verb":"think", "payload":"solve problem"}' \
+  localhost:50051 cam.SyscallService/Execute
+```
 
-1. Integrate real LLM providers by updating the environment variables
-2. Customize the routing policies in the CAM Protocol configuration
-3. Explore the advanced features like agent collaboration and cost optimization
+### Context Operations
+```bash
+# Write context
+grpcurl -plaintext -d '{"verb":"context_write", "payload":"namespace:test,key:data,value:example"}' \
+  localhost:50051 cam.SyscallService/Execute
+
+# Read context
+grpcurl -plaintext -d '{"verb":"context_read", "payload":"namespace:test,key:data"}' \
+  localhost:50051 cam.SyscallService/Execute
+```
+
+### Agent Operations
+```bash
+# Register agent
+grpcurl -plaintext -d '{"verb":"register_agent", "payload":"agent_id:test-agent,capabilities:reasoning"}' \
+  localhost:50051 cam.SyscallService/Execute
+
+# Agent communication
+grpcurl -plaintext -d '{"verb":"communicate", "payload":"from:agent-1,to:agent-2,message:hello"}' \
+  localhost:50051 cam.SyscallService/Execute
+```
+
+## Customization
+
+1. Modify the toy LLM service in `toy-llm/index.js`
+2. Customize the routing policies in the CAM-OS configuration
+3. Add your own AI services to the docker-compose.yml
 
 ## Cleanup
-
-To stop and remove all containers, networks, and volumes:
 
 ```bash
 docker-compose down -v
 ```
 
-## Troubleshooting
+## Next Steps
 
-If you encounter any issues:
+- Explore the [API Reference](../../docs/api-reference.md)
+- Learn about [Driver Development](../../docs/drivers/)
+- Deploy to production with [Kubernetes](../../deployment/kubernetes/)
 
-1. Check container logs: `docker-compose logs cam-core`
-2. Ensure all services are healthy: `docker-compose ps`
-3. Restart a specific service: `docker-compose restart cam-core`
-4. Rebuild and restart everything: `docker-compose down && docker-compose up -d --build`
+## Support
+
+For questions or issues:
+- [GitHub Issues](https://github.com/Dru-Edwards/CAM-OS/issues)
+- [Documentation](https://docs.cam-os.dev)
+- [Community Discord](https://discord.gg/cam-os)

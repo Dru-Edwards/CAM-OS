@@ -1,49 +1,55 @@
-# CAM Protocol Grafana Dashboards
+# CAM-OS Grafana Dashboards
 
-This directory contains Grafana dashboards and configurations for monitoring the CAM Protocol.
+This directory contains Grafana dashboards and configurations for monitoring CAM-OS.
 
 ## Dashboards
 
-The `dashboards` directory contains JSON definitions for the following Grafana dashboards:
+### Overview Dashboard
+- **[cam_overview.json](./dashboards/cam_overview.json)**: A comprehensive overview dashboard for monitoring CAM-OS performance, resource utilization, and business metrics.
 
-- **[cam_overview.json](./dashboards/cam_overview.json)**: A comprehensive overview dashboard for monitoring the CAM Protocol's performance, resource utilization, and business metrics.
+## Features
 
-## How to Use
+The dashboards provide real-time monitoring of:
 
-1. Start the monitoring stack using the Docker Compose file in the [examples/quickstart](../../examples/quickstart) directory.
+- **Syscall Performance**: Latency, throughput, and error rates
+- **Memory Context**: Context operations, versioning, and storage metrics
+- **Security**: Authentication, authorization, and threat detection
+- **Scheduler**: Task queue, priority distribution, and resource allocation
+- **Driver Ecosystem**: Driver loading, performance, and marketplace metrics
+- **Federation**: Multi-cluster synchronization and CRDT operations
+- **System Resources**: CPU, memory, and network utilization
 
-2. Access Grafana at http://localhost:3001 (default credentials: admin/admin).
+## Setup
 
-3. The dashboards should be automatically provisioned. If not, you can import them manually:
-   - In Grafana, click on the "+" icon in the sidebar
-   - Select "Import"
-   - Upload the JSON file or paste its contents
-   - Click "Import"
+1. Import the dashboard JSON files into your Grafana instance
+2. Configure Prometheus as a data source
+3. Set up alerting rules for critical metrics
+4. Customize panels and thresholds as needed
 
-## Dashboard Features
+## Dashboard Details
 
-The CAM Protocol Overview dashboard includes:
+The CAM-OS Overview dashboard includes:
 
-- Request rate and latency metrics
-- Error rate monitoring
-- Resource utilization (CPU, memory)
-- Routing decisions and performance
-- Cost tracking
-- Agent collaboration metrics
+- **System Health**: Overall system status and uptime
+- **Performance Metrics**: Response times, throughput, and resource usage
+- **Security Monitoring**: Authentication events and security violations
+- **Business Metrics**: Driver marketplace revenue and usage statistics
+- **Operational Insights**: Logs, traces, and debugging information
 
-## Customizing Dashboards
+## Customization
 
-You can customize these dashboards to suit your specific needs:
+To customize the dashboards:
 
-1. Make a copy of the dashboard in Grafana
-2. Modify the panels, variables, and queries as needed
-3. Save your custom dashboard
+1. Edit the JSON files directly
+2. Import modified dashboards into Grafana
+3. Save changes to preserve customizations
+4. Export updated dashboards for version control
 
-## Adding New Dashboards
+## Integration
 
-To add a new dashboard:
+The dashboards integrate with:
 
-1. Create the dashboard in Grafana
-2. Export it as JSON
-3. Add it to the `dashboards` directory
-4. Update the provisioning configuration if necessary
+- **Prometheus**: Primary metrics collection
+- **Loki**: Log aggregation and analysis
+- **Jaeger**: Distributed tracing
+- **Alertmanager**: Alert notification and management

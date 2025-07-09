@@ -1,45 +1,63 @@
-# CAM Protocol Prometheus Configuration
+# CAM-OS Prometheus Configuration
 
-This directory contains Prometheus configuration files and alert rules for monitoring the CAM Protocol.
+This directory contains Prometheus configuration files and alert rules for monitoring CAM-OS.
 
-## Directory Structure
+## Files
 
-- **[rules/](./rules/)**: Contains Prometheus alert rules
-  - **[alerts.yml](./rules/alerts.yml)**: Alert rules for latency, errors, resource utilization, and more
+- `prometheus.yml`: Main Prometheus configuration file
+- `rules/alerts.yml`: Alert rules for CAM-OS monitoring
 
-## Alert Rules
+## Setup
 
-The `alerts.yml` file defines the following alert rules:
+1. Start Prometheus with the provided configuration:
+   ```bash
+   prometheus --config.file=prometheus.yml
+   ```
 
-- **HighLatency**: Triggers when 95th percentile latency exceeds 2 seconds
-- **HighErrorRate**: Triggers when error rate exceeds 5%
-- **HighCPUUsage**: Triggers when CPU usage exceeds 80%
-- **HighMemoryUsage**: Triggers when memory usage exceeds 80%
-- **ServiceDown**: Triggers when a service is down for more than 1 minute
-- **HighRejectionRate**: Triggers when routing rejection rate exceeds 10%
-- **HighCostRate**: Triggers when API costs exceed $100/hour
-- **HighConnectionCount**: Triggers when connection count exceeds 1000
+2. The configuration will scrape metrics from:
+   - CAM-OS kernel metrics endpoint (port 8080)
+   - Node exporter (port 9100)
+   - Redis exporter (port 9121)
 
-## How to Use
+## Metrics
 
-1. Start the monitoring stack using the Docker Compose file in the [examples/quickstart](../../examples/quickstart) directory.
+CAM-OS exposes the following key metrics:
 
-2. Access Prometheus at http://localhost:9090.
+### Syscall Metrics
+- `cam_os_syscall_duration_seconds`: Histogram of syscall execution times
+- `cam_os_syscall_total`: Counter of total syscalls executed
+- `cam_os_syscall_errors_total`: Counter of syscall errors
 
-3. View active alerts in the "Alerts" tab.
+### Memory Context Metrics
+- `cam_os_memory_context_operations_total`: Counter of memory operations
+- `cam_os_memory_context_size_bytes`: Gauge of memory context size
+- `cam_os_memory_context_versions_total`: Counter of context versions
 
-## Customizing Alert Rules
+### Security Metrics
+- `cam_os_security_tpm_operations_total`: Counter of TPM operations
+- `cam_os_security_auth_failures_total`: Counter of authentication failures
+- `cam_os_security_rate_limit_hits_total`: Counter of rate limit hits
 
-To customize the alert rules:
+### Performance Metrics
+- `cam_os_scheduler_queue_size`: Gauge of scheduler queue size
+- `cam_os_scheduler_priority_distribution`: Histogram of priority distribution
+- `cam_os_driver_load_time_seconds`: Histogram of driver load times
 
-1. Modify the `rules/alerts.yml` file
-2. Adjust thresholds, durations, or add new rules as needed
-3. Restart Prometheus for the changes to take effect
+## Alerts
 
-## Adding New Rules
+The alert rules include:
 
-To add new alert rules:
+- **CAM-OS Down**: Triggered when CAM-OS is unreachable
+- **High Syscall Latency**: Triggered when syscall latency exceeds thresholds
+- **Memory Context Errors**: Triggered when memory operations fail
+- **Security Violations**: Triggered when authentication failures spike
+- **Performance Degradation**: Triggered when performance metrics degrade
 
-1. Edit the `rules/alerts.yml` file
-2. Follow the Prometheus alert rule syntax
-3. Restart Prometheus for the changes to take effect
+## Integration
+
+To integrate with existing monitoring:
+
+1. Add the CAM-OS job to your existing Prometheus configuration
+2. Import the alert rules into your Alertmanager
+3. Configure notification channels for CAM-OS alerts
+4. Set up dashboards using the provided Grafana configuration

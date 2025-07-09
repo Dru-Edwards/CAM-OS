@@ -89,13 +89,13 @@ app.get('/v1/models', (req, res) => {
         id: 'toy-llm-1',
         object: 'model',
         created: 1672531200,
-        owned_by: 'cam-protocol'
+        owned_by: 'cam-os'
       },
       {
         id: 'toy-llm-2',
         object: 'model',
         created: 1672531200,
-        owned_by: 'cam-protocol'
+        owned_by: 'cam-os'
       }
     ]
   });
@@ -132,11 +132,11 @@ function generateResponse(prompt, model, maxTokens) {
   const promptLower = prompt.toLowerCase();
   
   if (promptLower.includes('hello') || promptLower.includes('hi')) {
-    return 'Hello! I am a toy LLM model for the CAM Protocol quickstart example. I can help you test the routing and arbitration capabilities of the CAM Protocol.';
+    return 'Hello! I am a toy LLM model for the CAM-OS quickstart example. I can help you test the routing and arbitration capabilities of CAM-OS.';
   }
   
   if (promptLower.includes('help') || promptLower.includes('how')) {
-    return 'This is a simple toy LLM model for demonstration purposes. To test the CAM Protocol, try sending different types of prompts and observe how the routing works. Check the Grafana dashboard to see the metrics in action.';
+    return 'This is a simple toy LLM model for demonstration purposes. To test CAM-OS, try sending different types of prompts and observe how the routing works. Check the Grafana dashboard to see the metrics in action.';
   }
   
   if (promptLower.includes('what') && (promptLower.includes('cam') || promptLower.includes('protocol'))) {
@@ -144,7 +144,7 @@ function generateResponse(prompt, model, maxTokens) {
   }
   
   // Default response
-  return `This is a simulated response from the ${model} model. Your prompt was: "${prompt}". In a real implementation, this would be a more sophisticated response from an actual language model. The CAM Protocol would route your request to the most appropriate model based on your needs.`;
+  return `This is a mock response from an actual language model. CAM-OS would route your request to the most appropriate model based on your needs.`;
 }
 
 // Simple token counting function (very approximate)

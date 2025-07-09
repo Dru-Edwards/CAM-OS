@@ -64,6 +64,44 @@ jobs:
     - name: Lint
       run: golangci-lint run ./... --timeout=5m
 
+    - name: Check Proto Drift
+      run: |
+        echo "🔍 Checking for proto drift..."
+        make proto
+        if ! git diff --quiet; then
+          echo "❌ Proto files are out of sync with generated code"
+          echo "Run 'make proto' and commit the changes"
+          git diff
+          exit 1
+        fi
+        echo "✅ Proto files are in sync"
+
+    - name: Security Scan
+      run: |
+        echo "🔒 Running security scans..."
+        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+        gosec ./...
+
+    - name: Check Sensitive Files
+      run: |
+        echo "🔍 Checking for sensitive files..."
+        if find . -name "*.pem" -o -name "*.key" -o -name "*.crt" -o -name "*.env" | grep -v ".git" | head -1; then
+          echo "❌ Sensitive files found in repository"
+          exit 1
+        fi
+        echo "✅ No sensitive files found"
+
+    - name: Generate SBOM
+      run: |
+        echo "📋 Generating SBOM..."
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+        syft . -o spdx-json=sbom.json
+
+    - name: Hardening Validation
+      run: |
+        echo "🛡️ Running hardening validation..."
+        make hardening-check
+
   # Unit Tests
   test:
     name: Unit Tests
