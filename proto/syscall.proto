@@ -1,0 +1,846 @@
+syntax = "proto3";
+
+package cam.syscall;
+
+option go_package = "github.com/cam-os/kernel/proto/syscall";
+
+// Syscall service definition - Enhanced for CAM-OS Fork v1.1
+service SyscallService {
+  // Core cognitive syscalls (expanded)
+  rpc Arbitrate(ArbitrateRequest) returns (ArbitrateResponse);
+  rpc CommitTask(CommitTaskRequest) returns (CommitTaskResponse);
+  rpc QueryPolicy(QueryPolicyRequest) returns (QueryPolicyResponse);
+  rpc ExplainAction(ExplainActionRequest) returns (ExplainActionResponse);
+  rpc SnapshotContext(SnapshotContextRequest) returns (SnapshotContextResponse);
+  
+  // Memory context syscalls (enhanced)
+  rpc ContextRead(ContextReadRequest) returns (ContextReadResponse);
+  rpc ContextWrite(ContextWriteRequest) returns (ContextWriteResponse);
+  rpc ContextSnapshot(ContextSnapshotRequest) returns (ContextSnapshotResponse);
+  rpc ContextRestore(ContextRestoreRequest) returns (ContextRestoreResponse);
+  
+  // Security syscalls (new)
+  rpc TmpSign(TmpSignRequest) returns (TmpSignResponse);
+  rpc VerifyManifest(VerifyManifestRequest) returns (VerifyManifestResponse);
+  rpc EstablishSecureChannel(EstablishSecureChannelRequest) returns (EstablishSecureChannelResponse);
+  
+  // Observability syscalls (new)
+  rpc EmitTrace(EmitTraceRequest) returns (EmitTraceResponse);
+  rpc EmitMetric(EmitMetricRequest) returns (EmitMetricResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+  
+  // Fork expansion syscalls (new cognitive verbs)
+  rpc TaskRollback(TaskRollbackRequest) returns (TaskRollbackResponse);
+  rpc PolicyUpdate(PolicyUpdateRequest) returns (PolicyUpdateResponse);
+  rpc AgentRegister(AgentRegisterRequest) returns (AgentRegisterResponse);
+  rpc ContextVersionList(ContextVersionListRequest) returns (ContextVersionListResponse);
+  rpc SystemTuning(SystemTuningRequest) returns (SystemTuningResponse);
+}
+
+// Enhanced core data structures
+message Task {
+  string id = 1;
+  string description = 2;
+  repeated string requirements = 3;
+  map<string, string> metadata = 4;
+  int64 priority = 5;
+  int64 deadline = 6;
+  TaskType type = 7;
+  string agent_id = 8;
+  
+  // Fork expansion fields
+  PriorityDimensions priority_dimensions = 9;
+  repeated string dependencies = 10;
+  TaskComplexity complexity = 11;
+  int64 estimated_duration = 12;
+  repeated ResourceRequirement resource_requirements = 13;
+}
+
+// Enhanced task types for cognitive workloads
+enum TaskType {
+  TASK_TYPE_UNSPECIFIED = 0;
+  TASK_TYPE_ARBITRATION = 1;
+  TASK_TYPE_COLLABORATION = 2;
+  TASK_TYPE_ROUTING = 3;
+  TASK_TYPE_ANALYSIS = 4;
+  
+  // Fork expansion task types
+  TASK_TYPE_MEMORY_MANAGEMENT = 5;
+  TASK_TYPE_SECURITY_VERIFICATION = 6;
+  TASK_TYPE_POLICY_EVALUATION = 7;
+  TASK_TYPE_DRIVER_OPERATION = 8;
+  TASK_TYPE_SYSTEM_MAINTENANCE = 9;
+  TASK_TYPE_COMPLIANCE_CHECK = 10;
+}
+
+// 5D Priority system from Triple-Helix scheduler
+message PriorityDimensions {
+  double urgency = 1;      // Time-sensitive tasks
+  double importance = 2;   // Business impact weighting
+  double efficiency = 3;   // Resource optimization factor
+  double energy = 4;       // Power consumption awareness
+  double trust = 5;        // Security and reliability scoring
+}
+
+enum TaskComplexity {
+  COMPLEXITY_UNSPECIFIED = 0;
+  COMPLEXITY_TRIVIAL = 1;
+  COMPLEXITY_SIMPLE = 2;
+  COMPLEXITY_MODERATE = 3;
+  COMPLEXITY_COMPLEX = 4;
+  COMPLEXITY_CRITICAL = 5;
+}
+
+message ResourceRequirement {
+  string resource_type = 1; // "cpu", "memory", "gpu", "network", "storage"
+  double amount = 2;
+  string unit = 3;
+  bool required = 4;
+}
+
+message ArbitrationResult {
+  string task_id = 1;
+  string assigned_agent = 2;
+  string provider = 3;
+  double confidence = 4;
+  string reasoning = 5;
+  map<string, string> metadata = 6;
+  string trace_id = 7;
+  int64 timestamp = 8;
+  
+  // Fork expansion fields
+  PriorityScore priority_score = 9;
+  repeated AlternativeOption alternatives = 10;
+  PerformanceEstimate performance_estimate = 11;
+}
+
+message PriorityScore {
+  double total_score = 1;
+  PriorityDimensions dimension_scores = 2;
+  string queue_assignment = 3; // "high", "medium", "low"
+}
+
+message AlternativeOption {
+  string agent_id = 1;
+  string provider = 2;
+  double confidence = 3;
+  string reason_not_selected = 4;
+}
+
+message PerformanceEstimate {
+  int64 estimated_completion_time = 1;
+  double estimated_cost = 2;
+  double estimated_energy_usage = 3;
+  map<string, double> resource_usage = 4;
+}
+
+// Syscall request/response messages
+message ArbitrateRequest {
+  Task task = 1;
+  string policy_id = 2;
+  string caller_id = 3;
+  map<string, string> context = 4;
+  
+  // Fork expansion fields
+  bool include_alternatives = 5;
+  bool include_performance_estimate = 6;
+  repeated string preferred_agents = 7;
+  repeated string excluded_agents = 8;
+}
+
+message ArbitrateResponse {
+  ArbitrationResult result = 1;
+  string error = 2;
+  int32 status_code = 3;
+}
+
+message CommitTaskRequest {
+  Task task = 1;
+  string agent_id = 2;
+  string caller_id = 3;
+  
+  // Fork expansion fields
+  bool allow_rollback = 4;
+  string rollback_policy = 5;
+  map<string, string> commit_metadata = 6;
+}
+
+message CommitTaskResponse {
+  string task_id = 1;
+  string commit_id = 2;
+  string error = 3;
+  int32 status_code = 4;
+  
+  // Fork expansion fields
+  string rollback_token = 5;
+  int64 commit_timestamp = 6;
+}
+
+// Enhanced policy support
+message QueryPolicyRequest {
+  string policy_id = 1;
+  string query = 2;
+  string caller_id = 3;
+  map<string, string> context = 4;
+  
+  // Fork expansion fields
+  PolicyQueryType query_type = 5;
+  repeated string affected_resources = 6;
+}
+
+enum PolicyQueryType {
+  POLICY_QUERY_TYPE_UNSPECIFIED = 0;
+  POLICY_QUERY_TYPE_AUTHORIZATION = 1;
+  POLICY_QUERY_TYPE_COMPLIANCE = 2;
+  POLICY_QUERY_TYPE_RESOURCE_ACCESS = 3;
+  POLICY_QUERY_TYPE_SECURITY_ASSESSMENT = 4;
+}
+
+message QueryPolicyResponse {
+  bool allowed = 1;
+  string reason = 2;
+  string error = 3;
+  int32 status_code = 4;
+  
+  // Fork expansion fields
+  PolicyDecision decision_details = 5;
+  repeated PolicyViolation violations = 6;
+  repeated string required_permissions = 7;
+}
+
+message PolicyDecision {
+  string policy_name = 1;
+  string policy_version = 2;
+  map<string, string> evaluated_rules = 3;
+  double confidence_score = 4;
+}
+
+message PolicyViolation {
+  string rule_id = 1;
+  string violation_type = 2;
+  string description = 3;
+  string severity = 4;
+}
+
+// Enhanced explainability
+message ExplainActionRequest {
+  string trace_id = 1;
+  string caller_id = 2;
+  bool include_reasoning = 3;
+  
+  // Fork expansion fields
+  ExplanationFormat format = 4;
+  ExplanationDepth depth = 5;
+  repeated string focus_areas = 6;
+}
+
+enum ExplanationFormat {
+  EXPLANATION_FORMAT_UNSPECIFIED = 0;
+  EXPLANATION_FORMAT_NATURAL_LANGUAGE = 1;
+  EXPLANATION_FORMAT_STRUCTURED = 2;
+  EXPLANATION_FORMAT_FORMAL = 3;
+  EXPLANATION_FORMAT_VISUAL = 4;
+}
+
+enum ExplanationDepth {
+  EXPLANATION_DEPTH_UNSPECIFIED = 0;
+  EXPLANATION_DEPTH_SUMMARY = 1;
+  EXPLANATION_DEPTH_DETAILED = 2;
+  EXPLANATION_DEPTH_COMPREHENSIVE = 3;
+  EXPLANATION_DEPTH_FORENSIC = 4;
+}
+
+message ExplainActionResponse {
+  string explanation = 1;
+  repeated string reasoning_chain = 2;
+  repeated string evidence = 3;
+  string error = 4;
+  int32 status_code = 5;
+  
+  // Fork expansion fields
+  DecisionTree decision_tree = 6;
+  repeated CausalLink causal_links = 7;
+  ConfidenceAssessment confidence = 8;
+}
+
+message DecisionTree {
+  repeated DecisionNode nodes = 1;
+  repeated DecisionEdge edges = 2;
+}
+
+message DecisionNode {
+  string node_id = 1;
+  string decision_point = 2;
+  map<string, string> context = 3;
+  string outcome = 4;
+}
+
+message DecisionEdge {
+  string from_node = 1;
+  string to_node = 2;
+  string condition = 3;
+  double weight = 4;
+}
+
+message CausalLink {
+  string cause = 1;
+  string effect = 2;
+  double correlation_strength = 3;
+  string evidence_type = 4;
+}
+
+message ConfidenceAssessment {
+  double overall_confidence = 1;
+  map<string, double> component_confidence = 2;
+  repeated string uncertainty_sources = 3;
+}
+
+message SnapshotContextRequest {
+  string namespace = 1;
+  string caller_id = 2;
+  bool compress = 3;
+  
+  // Fork expansion fields
+  string description = 4;
+  repeated string include_keys = 5;
+  repeated string exclude_keys = 6;
+  SnapshotOptions options = 7;
+}
+
+message SnapshotOptions {
+  bool include_metadata = 1;
+  bool include_versions = 2;
+  string compression_algorithm = 3;
+  string encryption_key = 4;
+}
+
+message SnapshotContextResponse {
+  string snapshot_id = 1;
+  int64 size = 2;
+  string hash = 3;
+  string error = 4;
+  int32 status_code = 5;
+  
+  // Fork expansion fields
+  SnapshotMetadata metadata = 6;
+}
+
+message SnapshotMetadata {
+  int64 item_count = 1;
+  int64 compressed_size = 2;
+  int64 original_size = 3;
+  string compression_ratio = 4;
+  map<string, int64> type_counts = 5;
+}
+
+// Enhanced context operations
+message ContextReadRequest {
+  string namespace = 1;
+  string key = 2;
+  string caller_id = 3;
+  int64 version = 4; // 0 for latest
+  
+  // Fork expansion fields
+  bool include_metadata = 5;
+  bool include_versions = 6;
+  ContextReadOptions options = 7;
+}
+
+message ContextReadOptions {
+  bool decrypt = 1;
+  bool decompress = 2;
+  string expected_hash = 3;
+  bool validate_integrity = 4;
+}
+
+message ContextReadResponse {
+  bytes data = 1;
+  int64 version = 2;
+  string hash = 3;
+  string error = 4;
+  int32 status_code = 5;
+  
+  // Fork expansion fields
+  ContextMetadata metadata = 6;
+  repeated ContextVersion available_versions = 7;
+}
+
+message ContextMetadata {
+  int64 created_at = 1;
+  int64 updated_at = 2;
+  string created_by = 3;
+  string updated_by = 4;
+  map<string, string> tags = 5;
+  int64 size = 6;
+  string mime_type = 7;
+  bool encrypted = 8;
+  bool compressed = 9;
+}
+
+message ContextVersion {
+  int64 version = 1;
+  int64 timestamp = 2;
+  string author = 3;
+  string description = 4;
+  string hash = 5;
+}
+
+message ContextWriteRequest {
+  string namespace = 1;
+  string key = 2;
+  bytes data = 3;
+  string caller_id = 4;
+  map<string, string> metadata = 5;
+  
+  // Fork expansion fields
+  ContextWriteOptions options = 6;
+  string version_description = 7;
+}
+
+message ContextWriteOptions {
+  bool encrypt = 1;
+  bool compress = 2;
+  bool create_version = 3;
+  string encryption_key = 4;
+  string compression_algorithm = 5;
+  bool validate_schema = 6;
+}
+
+message ContextWriteResponse {
+  int64 version = 1;
+  string hash = 2;
+  string error = 3;
+  int32 status_code = 4;
+  
+  // Fork expansion fields
+  int64 bytes_written = 5;
+  string storage_location = 6;
+}
+
+message ContextSnapshotRequest {
+  string namespace = 1;
+  string caller_id = 2;
+  string description = 3;
+  
+  // Fork expansion fields
+  repeated string include_patterns = 4;
+  repeated string exclude_patterns = 5;
+  SnapshotOptions options = 6;
+}
+
+message ContextSnapshotResponse {
+  string snapshot_id = 1;
+  int64 timestamp = 2;
+  string error = 3;
+  int32 status_code = 4;
+  
+  // Fork expansion fields
+  SnapshotMetadata metadata = 5;
+}
+
+message ContextRestoreRequest {
+  string snapshot_id = 1;
+  string caller_id = 2;
+  bool force = 3;
+  
+  // Fork expansion fields
+  string target_namespace = 4;
+  repeated string include_keys = 5;
+  repeated string exclude_keys = 6;
+  RestoreOptions options = 7;
+}
+
+message RestoreOptions {
+  bool overwrite_existing = 1;
+  bool create_backup = 2;
+  bool validate_integrity = 3;
+  string restore_point_description = 4;
+}
+
+message ContextRestoreResponse {
+  string namespace = 1;
+  int64 restored_items = 2;
+  string error = 3;
+  int32 status_code = 4;
+  
+  // Fork expansion fields
+  RestoreResult result = 5;
+}
+
+message RestoreResult {
+  int64 total_items = 1;
+  int64 successful_items = 2;
+  int64 failed_items = 3;
+  repeated string failed_keys = 4;
+  string backup_snapshot_id = 5;
+}
+
+// Security syscalls (enhanced)
+message TmpSignRequest {
+  bytes data = 1;
+  string caller_id = 2;
+  string key_id = 3;
+  
+  // Fork expansion fields
+  SignatureOptions options = 4;
+}
+
+message SignatureOptions {
+  string algorithm = 1; // "dilithium3", "rsa-pss", etc.
+  bool include_timestamp = 2;
+  bool include_certificate_chain = 3;
+  map<string, string> additional_claims = 4;
+}
+
+message TmpSignResponse {
+  bytes signature = 1;
+  string algorithm = 2;
+  string error = 3;
+  int32 status_code = 4;
+  
+  // Fork expansion fields
+  SignatureMetadata metadata = 5;
+}
+
+message SignatureMetadata {
+  string key_id = 1;
+  int64 timestamp = 2;
+  string certificate_chain = 3;
+  map<string, string> claims = 4;
+  string signature_format = 5;
+}
+
+message VerifyManifestRequest {
+  bytes manifest = 1;
+  bytes signature = 2;
+  string public_key = 3;
+  string caller_id = 4;
+  
+  // Fork expansion fields
+  VerificationOptions options = 5;
+}
+
+message VerificationOptions {
+  bool check_expiration = 1;
+  bool check_revocation = 2;
+  repeated string trusted_issuers = 3;
+  string trust_policy = 4;
+}
+
+message VerifyManifestResponse {
+  bool valid = 1;
+  string issuer = 2;
+  int64 expires_at = 3;
+  string error = 4;
+  int32 status_code = 5;
+  
+  // Fork expansion fields
+  VerificationResult result = 6;
+}
+
+message VerificationResult {
+  bool signature_valid = 1;
+  bool certificate_valid = 2;
+  bool not_expired = 3;
+  bool not_revoked = 4;
+  repeated string warnings = 5;
+  TrustLevel trust_level = 6;
+}
+
+enum TrustLevel {
+  TRUST_LEVEL_UNSPECIFIED = 0;
+  TRUST_LEVEL_UNTRUSTED = 1;
+  TRUST_LEVEL_LOW = 2;
+  TRUST_LEVEL_MEDIUM = 3;
+  TRUST_LEVEL_HIGH = 4;
+  TRUST_LEVEL_ULTIMATE = 5;
+}
+
+message EstablishSecureChannelRequest {
+  string peer_id = 1;
+  string caller_id = 2;
+  string protocol = 3; // "tls13", "kyber768", etc.
+  
+  // Fork expansion fields
+  ChannelOptions options = 4;
+}
+
+message ChannelOptions {
+  repeated string supported_ciphers = 1;
+  bool require_mutual_auth = 2;
+  int32 session_timeout = 3;
+  map<string, string> channel_metadata = 4;
+}
+
+message EstablishSecureChannelResponse {
+  string channel_id = 1;
+  bytes session_key = 2;
+  string error = 3;
+  int32 status_code = 4;
+  
+  // Fork expansion fields
+  ChannelMetadata metadata = 5;
+}
+
+message ChannelMetadata {
+  string negotiated_cipher = 1;
+  string negotiated_protocol = 2;
+  int64 established_at = 3;
+  int64 expires_at = 4;
+  bool mutual_authenticated = 5;
+}
+
+// Observability syscalls (enhanced)
+message EmitTraceRequest {
+  string trace_id = 1;
+  string span_id = 2;
+  string operation_name = 3;
+  int64 start_time = 4;
+  int64 end_time = 5;
+  map<string, string> tags = 6;
+  string caller_id = 7;
+  
+  // Fork expansion fields
+  TraceOptions options = 8;
+  repeated TraceEvent events = 9;
+}
+
+message TraceOptions {
+  bool include_stack_trace = 1;
+  bool include_context = 2;
+  string sampling_rate = 3;
+}
+
+message TraceEvent {
+  int64 timestamp = 1;
+  string event_type = 2;
+  string description = 3;
+  map<string, string> attributes = 4;
+}
+
+message EmitTraceResponse {
+  string trace_id = 1;
+  string error = 2;
+  int32 status_code = 3;
+  
+  // Fork expansion fields
+  TraceMetadata metadata = 4;
+}
+
+message TraceMetadata {
+  int64 ingested_at = 1;
+  string storage_location = 2;
+  int64 retention_until = 3;
+}
+
+message EmitMetricRequest {
+  string name = 1;
+  double value = 2;
+  string type = 3; // "counter", "gauge", "histogram"
+  map<string, string> labels = 4;
+  int64 timestamp = 5;
+  string caller_id = 6;
+  
+  // Fork expansion fields
+  MetricOptions options = 7;
+}
+
+message MetricOptions {
+  string unit = 1;
+  string description = 2;
+  repeated double histogram_buckets = 3;
+  bool aggregate = 4;
+}
+
+message EmitMetricResponse {
+  string metric_id = 1;
+  string error = 2;
+  int32 status_code = 3;
+  
+  // Fork expansion fields
+  MetricMetadata metadata = 4;
+}
+
+message MetricMetadata {
+  int64 ingested_at = 1;
+  string storage_backend = 2;
+  string aggregation_key = 3;
+}
+
+message HealthCheckRequest {
+  string caller_id = 1;
+  bool detailed = 2;
+  
+  // Fork expansion fields
+  repeated string component_filter = 3;
+  HealthCheckOptions options = 4;
+}
+
+message HealthCheckOptions {
+  bool include_metrics = 1;
+  bool include_dependencies = 2;
+  int32 timeout_seconds = 3;
+}
+
+message HealthCheckResponse {
+  string status = 1; // "healthy", "degraded", "unhealthy"
+  map<string, string> components = 2;
+  int64 timestamp = 3;
+  string error = 4;
+  int32 status_code = 5;
+  
+  // Fork expansion fields
+  HealthDetails details = 6;
+}
+
+message HealthDetails {
+  map<string, ComponentHealth> component_details = 1;
+  repeated Dependency dependencies = 2;
+  SystemMetrics metrics = 3;
+}
+
+message ComponentHealth {
+  string status = 1;
+  string message = 2;
+  int64 last_check = 3;
+  map<string, string> details = 4;
+}
+
+message Dependency {
+  string name = 1;
+  string type = 2;
+  string status = 3;
+  string endpoint = 4;
+  int64 response_time_ms = 5;
+}
+
+message SystemMetrics {
+  double cpu_usage = 1;
+  double memory_usage = 2;
+  double disk_usage = 3;
+  int64 uptime_seconds = 4;
+  int64 active_connections = 5;
+}
+
+// Fork expansion syscalls (new cognitive verbs)
+
+message TaskRollbackRequest {
+  string task_id = 1;
+  string commit_id = 2;
+  string rollback_token = 3;
+  string caller_id = 4;
+  string reason = 5;
+}
+
+message TaskRollbackResponse {
+  bool success = 1;
+  string rollback_id = 2;
+  string error = 3;
+  int32 status_code = 4;
+  RollbackResult result = 5;
+}
+
+message RollbackResult {
+  string previous_state = 1;
+  string current_state = 2;
+  repeated string affected_resources = 3;
+  int64 rollback_timestamp = 4;
+}
+
+message PolicyUpdateRequest {
+  string policy_id = 1;
+  string policy_content = 2;
+  string policy_language = 3; // "rego", "json", "yaml"
+  string caller_id = 4;
+  bool dry_run = 5;
+}
+
+message PolicyUpdateResponse {
+  bool success = 1;
+  string policy_version = 2;
+  string error = 3;
+  int32 status_code = 4;
+  PolicyUpdateResult result = 5;
+}
+
+message PolicyUpdateResult {
+  repeated string validation_errors = 1;
+  repeated string warnings = 2;
+  map<string, string> impact_analysis = 3;
+  bool requires_restart = 4;
+}
+
+message AgentRegisterRequest {
+  string agent_id = 1;
+  string agent_name = 2;
+  repeated string capabilities = 3;
+  map<string, string> metadata = 4;
+  string caller_id = 5;
+  AgentSpec spec = 6;
+}
+
+message AgentSpec {
+  string version = 1;
+  repeated string supported_task_types = 2;
+  ResourceRequirement resource_limits = 3;
+  SecurityProfile security_profile = 4;
+}
+
+message SecurityProfile {
+  repeated string required_permissions = 1;
+  repeated string trusted_sources = 2;
+  string isolation_level = 3;
+}
+
+message AgentRegisterResponse {
+  bool success = 1;
+  string registration_id = 2;
+  string error = 3;
+  int32 status_code = 4;
+  AgentRegistrationResult result = 5;
+}
+
+message AgentRegistrationResult {
+  string assigned_id = 1;
+  repeated string granted_capabilities = 2;
+  repeated string denied_capabilities = 3;
+  int64 registration_timestamp = 4;
+  int64 expires_at = 5;
+}
+
+message ContextVersionListRequest {
+  string namespace = 1;
+  string key = 2;
+  string caller_id = 3;
+  int32 limit = 4;
+  int64 since_version = 5;
+}
+
+message ContextVersionListResponse {
+  repeated ContextVersion versions = 1;
+  string error = 2;
+  int32 status_code = 3;
+  bool has_more = 4;
+  string next_token = 5;
+}
+
+message SystemTuningRequest {
+  string caller_id = 1;
+  map<string, string> parameters = 2;
+  bool dry_run = 3;
+  string tuning_profile = 4; // "performance", "efficiency", "balanced"
+}
+
+message SystemTuningResponse {
+  bool success = 1;
+  string error = 2;
+  int32 status_code = 3;
+  SystemTuningResult result = 4;
+}
+
+message SystemTuningResult {
+  map<string, string> applied_changes = 1;
+  map<string, string> performance_impact = 2;
+  repeated string recommendations = 3;
+  bool requires_restart = 4;
+} 

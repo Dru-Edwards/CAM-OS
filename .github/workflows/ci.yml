@@ -1,203 +1,233 @@
-name: Continuous Integration
+name: CAM-OS Kernel CI/CD
 
 on:
   push:
     branches: [ main, develop ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main, develop ]
 
 env:
-  NODE_VERSION: '18.x'
-  REGISTRY: ghcr.io
+  GO_VERSION: '1.21'
+  DOCKER_REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Code Quality and Testing
-  test:
-    name: Test Suite
+  # Code Quality Checks
+  quality:
+    name: Code Quality
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
       with:
-        fetch-depth: 0
+        go-version: ${{ env.GO_VERSION }}
 
-    - name: Setup Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
+    - name: Cache Go modules
+      uses: actions/cache@v3
       with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
 
-    - name: Install dependencies
-      run: npm ci
+    - name: Install tools
+      run: make tools
 
-    - name: Type checking
-      run: npm run type-check
+    - name: Download dependencies
+      run: make deps
 
-    - name: Lint code
-      run: npm run lint
+    - name: Generate protobuf
+      run: make proto
 
     - name: Format check
-      run: npm run format -- --check
+      run: |
+        make fmt
+        git diff --exit-code
+
+    - name: Lint
+      run: make lint
+
+    - name: Vet
+      run: make vet
+
+    - name: Security scan
+      run: make security-scan
+
+  # Unit Tests
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: make deps
+
+    - name: Generate protobuf
+      run: make proto
 
     - name: Run unit tests
-      run: npm run test:unit
-
-    - name: Run integration tests
-      run: npm run test:integration
-      env:
-        NODE_ENV: test
-
-    - name: Generate coverage report
-      run: npm run test:coverage
-
-    - name: Generate coverage badges
-      run: npm run generate:badges
-      
-    - name: Upload coverage badges
-      uses: actions/upload-artifact@v3
-      with:
-        name: coverage-badges
-        path: ./badges/
-        retention-days: 90
+      run: make test-coverage
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
-        file: ./coverage/lcov.info
+        file: ./coverage.out
         flags: unittests
         name: codecov-umbrella
 
-  # End-to-End Testing
-  e2e:
-    name: E2E Tests
+  # Integration Tests
+  integration:
+    name: Integration Tests
     runs-on: ubuntu-latest
-    needs: test
-    
+    needs: quality
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - name: Set up Go
+      uses: actions/setup-go@v4
       with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
+        go-version: ${{ env.GO_VERSION }}
 
-    - name: Install dependencies
-      run: npm ci
-
-    - name: Install Playwright browsers
-      run: npx playwright install --with-deps
-
-    - name: Build application
-      run: npm run build
-
-    - name: Run E2E tests
-      run: npm run test:e2e
-
-    - name: Upload test results
-      uses: actions/upload-artifact@v3
-      if: failure()
+    - name: Cache Go modules
+      uses: actions/cache@v3
       with:
-        name: playwright-report
-        path: playwright-report/
-        retention-days: 30
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
 
-  # Security Scanning
-  security:
-    name: Security Scan
+    - name: Download dependencies
+      run: make deps
+
+    - name: Generate protobuf
+      run: make proto
+
+    - name: Run integration tests
+      run: make test-integration
+      env:
+        REDIS_URL: redis://localhost:6379
+
+  # Docker Tests
+  docker-test:
+    name: Docker Tests
     runs-on: ubuntu-latest
-    
+    needs: quality
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-    - name: Install dependencies
-      run: npm ci
+    - name: Run Docker tests
+      run: make docker-test
 
-    - name: Run security audit
-      run: npm audit --audit-level=high
-
-    - name: Generate Software Bill of Materials (SBOM)
-      uses: anchore/sbom-action@v1
-      with:
-        format: cyclonedx-json
-        output-file: ./sbom.json
-
-    - name: Upload SBOM as artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: sbom
-        path: ./sbom.json
-        retention-days: 90
-
-    - name: Run CodeQL Analysis
-      uses: github/codeql-action/init@v2
-      with:
-        languages: javascript
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
-
-  # Build and Package
+  # Build Matrix
   build:
-    name: Build Package
+    name: Build
     runs-on: ubuntu-latest
-    needs: [test, security]
-    
+    needs: [test, integration]
+    strategy:
+      matrix:
+        goos: [linux, darwin, windows]
+        goarch: [amd64, arm64]
+        exclude:
+          - goos: windows
+            goarch: arm64
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - name: Set up Go
+      uses: actions/setup-go@v4
       with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
+        go-version: ${{ env.GO_VERSION }}
 
-    - name: Install dependencies
-      run: npm ci
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
 
-    - name: Build package
-      run: npm run build
+    - name: Download dependencies
+      run: make deps
+
+    - name: Generate protobuf
+      run: make proto
+
+    - name: Build binary
+      run: |
+        GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+        go build -ldflags "-X main.Version=${GITHUB_REF#refs/tags/} -X main.BuildTime=$(date -u '+%Y-%m-%d_%H:%M:%S') -X main.CommitHash=${GITHUB_SHA:0:7}" \
+        -o dist/cam-kernel-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }} \
+        ./cmd/cam-kernel
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: dist
-        path: dist/
-        retention-days: 7
+        name: cam-kernel-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: dist/cam-kernel-${{ matrix.goos }}-${{ matrix.goarch }}*
 
-  # Docker Build
+  # Docker Build and Push
   docker:
-    name: Docker Build
+    name: Docker Build & Push
     runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push'
-    
+    needs: [test, integration, docker-test]
+    if: github.event_name != 'pull_request'
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Docker Buildx
+    - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
     - name: Log in to Container Registry
-      if: github.event_name != 'pull_request'
       uses: docker/login-action@v3
       with:
-        registry: ${{ env.REGISTRY }}
+        registry: ${{ env.DOCKER_REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -205,60 +235,191 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
           type=ref,event=branch
           type=ref,event=pr
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
-          type=sha
+          type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
         platforms: linux/amd64,linux/arm64
-        push: ${{ github.event_name != 'pull_request' }}
+        push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        target: prod
 
-  # Performance Testing
+  # Performance Tests
   performance:
     name: Performance Tests
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/main'
-    
+    if: github.event_name != 'pull_request'
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - name: Set up Go
+      uses: actions/setup-go@v4
       with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
+        go-version: ${{ env.GO_VERSION }}
 
-    - name: Install dependencies
-      run: npm ci
+    - name: Download dependencies
+      run: make deps
 
-    - name: Download build artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: dist
-        path: dist/
+    - name: Generate protobuf
+      run: make proto
 
     - name: Run performance tests
-      run: npm run test:performance
-      env:
-        NODE_ENV: production
+      run: make perf-test
 
-    - name: Upload performance results
-      uses: actions/upload-artifact@v3
+    - name: Run benchmarks
+      run: make benchmark
+
+  # Security Scan
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
       with:
-        name: performance-results
-        path: performance-results/
-        retention-days: 30
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Release
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [build, docker, performance, security]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Generate changelog from commits since last tag
+        LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        if [ -n "$LAST_TAG" ]; then
+          CHANGELOG=$(git log --pretty=format:"- %s" ${LAST_TAG}..HEAD)
+        else
+          CHANGELOG=$(git log --pretty=format:"- %s")
+        fi
+        echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: CAM-OS Kernel ${{ github.ref }}
+        body: |
+          ## What's Changed
+          
+          ${{ steps.changelog.outputs.CHANGELOG }}
+          
+          ## Docker Images
+          
+          ```bash
+          docker pull ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          ```
+          
+          ## Installation
+          
+          Download the appropriate binary for your platform from the assets below.
+          
+          ## Verification
+          
+          All binaries are built from source and include version information:
+          
+          ```bash
+          ./cam-kernel-linux-amd64 --version
+          ```
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Assets
+      run: |
+        for file in cam-kernel-*/cam-kernel-*; do
+          if [ -f "$file" ]; then
+            echo "Uploading $file"
+            gh release upload ${{ github.ref_name }} "$file"
+          fi
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Deployment
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: production
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to production
+      run: |
+        echo "🚀 Deploying CAM-OS Kernel ${{ github.ref_name }} to production"
+        # Add your deployment logic here
+        # This could include:
+        # - Updating Kubernetes deployments
+        # - Triggering cloud deployments
+        # - Updating package repositories
+        # - Sending notifications
+
+    - name: Notify deployment
+      run: |
+        echo "✅ CAM-OS Kernel ${{ github.ref_name }} deployed successfully"
+        # Add notification logic here
+        # This could include:
+        # - Slack notifications
+        # - Email notifications
+        # - Discord notifications
+        # - PagerDuty alerts
+
+  # Cleanup
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [release, deploy]
+    if: always()
+    steps:
+    - name: Clean up artifacts
+      run: |
+        echo "🧹 Cleaning up CI/CD artifacts"
+        # Add cleanup logic here if needed

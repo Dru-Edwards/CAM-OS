@@ -1,62 +1,63 @@
-# Multi-stage Docker build for CAM Protocol
+# Multi-stage Docker build for CAM-OS Kernel
 # Build stage
-FROM node:18-alpine AS builder
+FROM golang:1.21-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
 
 # Copy source code
-COPY src/ ./src/
+COPY cmd/ ./cmd/
+COPY internal/ ./internal/
+COPY proto/ ./proto/
 
-# Build the application
-RUN npm run build
+# Build the kernel
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o cam-kernel ./cmd/cam-kernel
 
 # Production stage
-FROM node:18-alpine AS production
+FROM alpine:3.18 AS production
 
 # Set environment variables
-ENV NODE_ENV=production
-ENV PORT=8080
 ENV CAM_LOG_LEVEL=info
+ENV CAM_GRPC_PORT=8080
+ENV CAM_METRICS_PORT=9090
+
+# Install runtime dependencies
+RUN apk --no-cache add ca-certificates tzdata
 
 # Create app directory and user
 WORKDIR /app
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S cam -u 1001
+RUN addgroup -g 1001 -S camkernel
+RUN adduser -S camkernel -u 1001
 
-# Copy package files
-COPY package*.json ./
-
-# Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
-
-# Copy built application from builder stage
-COPY --from=builder --chown=cam:nodejs /app/dist ./dist
+# Copy kernel binary from builder stage
+COPY --from=builder --chown=camkernel:camkernel /app/cam-kernel ./
 
 # Copy configuration files
-COPY --chown=cam:nodejs config/ ./config/
-COPY --chown=cam:nodejs scripts/docker-entrypoint.sh ./
+COPY --chown=camkernel:camkernel MANIFEST.toml ./
+COPY --chown=camkernel:camkernel scripts/docker-entrypoint.sh ./
 
 # Make entrypoint executable
 RUN chmod +x docker-entrypoint.sh
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node dist/scripts/health-check.js
+  CMD ./cam-kernel --health-check
 
-# Expose port
-EXPOSE 8080
+# Expose ports
+EXPOSE 8080 9090
 
 # Switch to non-root user
-USER cam
+USER camkernel
 
 # Set entrypoint
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["node", "dist/index.js"]
+CMD ["./cam-kernel"]

@@ -1,5 +1,5 @@
-# CAM Protocol Quick Start Script for Windows
-# This script helps you quickly set up and run the CAM Protocol for demonstration purposes
+# CAM-OS Kernel Quick Start Script for Windows
+# This script helps you quickly set up and run the CAM-OS kernel for demonstration purposes
 
 # Colors for better readability
 $Green = @{ ForegroundColor = 'Green' }
@@ -8,7 +8,7 @@ $Yellow = @{ ForegroundColor = 'Yellow' }
 $Red = @{ ForegroundColor = 'Red' }
 
 Write-Host "============================================" @Blue
-Write-Host "   CAM Protocol - Quick Start Demo Script   " @Blue
+Write-Host "   CAM-OS Kernel - Quick Start Demo Script   " @Blue
 Write-Host "============================================" @Blue
 Write-Host ""
 
@@ -30,55 +30,65 @@ try {
     exit 1
 }
 
+# Check if grpcurl is available (for testing)
+try {
+    $grpcurlVersion = grpcurl --version
+} catch {
+    Write-Host "Note: grpcurl is not installed. You can install it to test the kernel." @Yellow
+    Write-Host "Visit https://github.com/fullstorydev/grpcurl for installation instructions."
+}
+
 # Create .env file if it doesn't exist
 if (-not (Test-Path .env)) {
     Write-Host "Creating .env file with demo settings..." @Yellow
     @"
-# CAM Protocol Demo Environment
-# For production use, replace these with your actual API keys
+# CAM-OS Kernel Demo Environment
+# For production use, replace these with your actual settings
 
-# API Keys (demo mode uses mock services)
-OPENAI_API_KEY=demo-key-replace-me
-ANTHROPIC_API_KEY=demo-key-replace-me
-
-# Service Configuration
-NODE_ENV=development
-LOG_LEVEL=info
-PORT=8080
-
-# Database Configuration
-DB_HOST=postgres
-DB_PORT=5432
-DB_USER=cam_user
-DB_PASSWORD=cam_password
-DB_NAME=cam_db
+# Kernel Configuration
+CAM_LOG_LEVEL=info
+CAM_GRPC_PORT=8080
+CAM_METRICS_PORT=9090
+CAM_DEVELOPMENT=true
 
 # Redis Configuration
-REDIS_HOST=redis
-REDIS_PORT=6379
+CAM_REDIS_URL=redis://redis:6379
+
+# Database Configuration
+CAM_POSTGRES_URL=postgres://cam_user:cam_password@postgres:5432/cam_db
+
+# Security Configuration (Demo Mode)
+CAM_SECURITY_ENABLED=false
+CAM_TPM_ENABLED=false
+CAM_POST_QUANTUM_ENABLED=false
 "@ | Out-File -FilePath .env -Encoding utf8
     Write-Host "Created .env file with demo settings." @Green
 }
 
 # Create necessary directories
-New-Item -ItemType Directory -Force -Path config | Out-Null
+New-Item -ItemType Directory -Force -Path drivers | Out-Null
 New-Item -ItemType Directory -Force -Path monitoring/prometheus | Out-Null
 New-Item -ItemType Directory -Force -Path monitoring/grafana/provisioning/datasources | Out-Null
 New-Item -ItemType Directory -Force -Path monitoring/grafana/provisioning/dashboards | Out-Null
 New-Item -ItemType Directory -Force -Path monitoring/grafana/dashboards | Out-Null
 
-# Create basic prometheus config if it doesn't exist
+# Create basic prometheus config for kernel metrics
 if (-not (Test-Path monitoring/prometheus/prometheus.yml)) {
-    Write-Host "Creating basic Prometheus configuration..." @Yellow
+    Write-Host "Creating Prometheus configuration for kernel metrics..." @Yellow
     @"
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'cam-core'
+  - job_name: 'cam-kernel'
     static_configs:
-      - targets: ['cam-core:8080']
+      - targets: ['cam-kernel:9090']
+    metrics_path: '/metrics'
+
+  - job_name: 'driver-runtime'
+    static_configs:
+      - targets: ['driver-runtime:8081']
     metrics_path: '/metrics'
 
   - job_name: 'prometheus'
@@ -114,7 +124,7 @@ if (-not (Test-Path monitoring/grafana/provisioning/dashboards/dashboards.yml)) 
 apiVersion: 1
 
 providers:
-  - name: 'CAM Protocol'
+  - name: 'CAM-OS Kernel'
     orgId: 1
     folder: ''
     type: file
@@ -128,25 +138,40 @@ providers:
     Write-Host "Created Grafana dashboard provisioning configuration." @Green
 }
 
-Write-Host "Starting CAM Protocol services..." @Yellow
+# Create basic CAM-OS kernel manifest if it doesn't exist
+if (-not (Test-Path MANIFEST.toml)) {
+    Write-Host "Using existing kernel manifest..." @Yellow
+    Write-Host "Kernel manifest already exists." @Green
+}
+
+Write-Host "Starting CAM-OS kernel services..." @Yellow
 docker-compose up -d
 
 Write-Host ""
-Write-Host "=== CAM Protocol Demo is now running! ===" @Green
+Write-Host "=== CAM-OS Kernel Demo is now running! ===" @Green
 Write-Host ""
 Write-Host "Access the following services:"
-Write-Host "  - CAM Protocol API: http://localhost:8080" @Blue
-Write-Host "  - Mock OpenAI API: http://localhost:8081" @Blue
-Write-Host "  - Mock Anthropic API: http://localhost:8082" @Blue
+Write-Host "  - CAM-OS Kernel gRPC API: localhost:8080" @Blue
+Write-Host "  - Kernel Metrics: http://localhost:9090" @Blue
+Write-Host "  - Driver Runtime: http://localhost:8081" @Blue
 Write-Host "  - Grafana Dashboard: http://localhost:3000 (admin/admin)" @Blue
-Write-Host "  - Prometheus: http://localhost:9090" @Blue
+Write-Host "  - Prometheus: http://localhost:9091" @Blue
+Write-Host "  - Redis: localhost:6379" @Blue
+Write-Host "  - PostgreSQL: localhost:5432" @Blue
 Write-Host ""
-Write-Host "Try a test request:" @Yellow
-Write-Host 'curl -X POST http://localhost:8080/mesh/chat -H "Content-Type: application/json" -d "{\"message\": \"Hello world\", \"options\": {\"routing\": \"auto\"}}"'
+Write-Host "Try test syscalls (requires grpcurl):" @Yellow
+Write-Host "# Health check syscall"
+Write-Host 'grpcurl -plaintext -d "{}" localhost:8080 syscall.SyscallService/HealthCheck'
+Write-Host ""
+Write-Host "# Arbitration syscall"
+Write-Host 'grpcurl -plaintext -d "{\"task_id\": \"test-001\", \"options\": {\"provider\": \"demo\"}}" localhost:8080 syscall.SyscallService/Arbitrate'
+Write-Host ""
+Write-Host "View kernel logs:" @Yellow
+Write-Host "docker logs cam-kernel -f"
 Write-Host ""
 Write-Host "To stop the demo:" @Yellow
 Write-Host "docker-compose down"
 Write-Host ""
 Write-Host "============================================" @Blue
-Write-Host "   Thank you for trying the CAM Protocol!   " @Blue
+Write-Host "   Thank you for trying CAM-OS Kernel!     " @Blue
 Write-Host "============================================" @Blue

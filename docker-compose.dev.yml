@@ -1,41 +1,36 @@
 version: '3.8'
 
 services:
-  # Development container
-  dev:
+  # CAM-OS Kernel Development Container
+  cam-kernel-dev:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: dev
-    image: cam-protocol/dev:latest
-    container_name: cam-dev
+      dockerfile: Dockerfile.dev
+      target: development
+    image: cam-os/kernel-dev:latest
+    container_name: cam-kernel-dev
     volumes:
       - .:/workspace:cached
-      - node_modules:/workspace/node_modules
+      - go-modules:/go/pkg/mod
     command: /bin/sh -c "while sleep 1000; do :; done"
     ports:
-      - "8080:8080"
-      - "9229:9229" # Node.js debug port
+      - "8080:8080"  # gRPC API
+      - "9090:9090"  # Metrics
+      - "2345:2345"  # Delve debug port
     environment:
-      - NODE_ENV=development
-      - LOG_LEVEL=debug
-      - PORT=8080
-      - OPENAI_API_KEY=sk-test-openai-key
-      - ANTHROPIC_API_KEY=sk-ant-test-anthropic-key
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=cam_user
-      - DB_PASSWORD=cam_password
-      - DB_NAME=cam_db
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - CAM_LOG_LEVEL=debug
+      - CAM_GRPC_PORT=8080
+      - CAM_METRICS_PORT=9090
+      - CAM_REDIS_URL=redis://redis:6379
+      - CAM_POSTGRES_URL=postgres://cam_user:cam_password@postgres:5432/cam_db
+      - CAM_DEVELOPMENT=true
     depends_on:
       - redis
       - postgres
     networks:
       - cam-network
 
-  # Redis for caching and rate limiting
+  # Redis for context storage and caching
   redis:
     image: redis:7-alpine
     container_name: cam-redis-dev
@@ -43,7 +38,7 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -64,6 +59,7 @@ services:
       - POSTGRES_DB=cam_db
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db-dev.sql:/docker-entrypoint-initdb.d/init-db.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cam_user -d cam_db"]
       interval: 10s
@@ -72,32 +68,46 @@ services:
     networks:
       - cam-network
 
-  # Demo OpenAI-compatible API service
-  mock-openai:
-    image: ghcr.io/complete-arbitration-mesh/mock-openai:latest
-    container_name: cam-mock-openai-dev
+  # Development Driver Runtime
+  driver-runtime-dev:
+    image: cam-os/driver-runtime-dev:latest
+    container_name: cam-driver-runtime-dev
     ports:
       - "8081:8081"
     environment:
-      - PORT=8081
+      - CAM_KERNEL_URL=cam-kernel-dev:8080
+      - CAM_DRIVER_PORT=8081
+      - CAM_DEVELOPMENT=true
+    volumes:
+      - ./drivers:/app/drivers:ro
     networks:
       - cam-network
+    depends_on:
+      - cam-kernel-dev
 
-  # Demo Anthropic-compatible API service
-  mock-anthropic:
-    image: ghcr.io/complete-arbitration-mesh/mock-anthropic:latest
-    container_name: cam-mock-anthropic-dev
+  # Prometheus for development metrics
+  prometheus-dev:
+    image: prom/prometheus:v2.45.0
+    container_name: cam-prometheus-dev
     ports:
-      - "8082:8082"
-    environment:
-      - PORT=8082
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus-dev.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
     networks:
       - cam-network
+    depends_on:
+      - cam-kernel-dev
 
 volumes:
-  node_modules:
+  go-modules:
   redis-data:
   postgres-data:
+  prometheus-data:
 
 networks:
   cam-network:

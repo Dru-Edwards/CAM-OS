@@ -1,6 +1,6 @@
 #!/bin/bash
-# CAM Protocol Quick Start Script
-# This script helps you quickly set up and run the CAM Protocol for demonstration purposes
+# CAM-OS Kernel Quick Start Script
+# This script helps you quickly set up and run the CAM-OS kernel for demonstration purposes
 
 set -e
 
@@ -12,7 +12,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}============================================${NC}"
-echo -e "${BLUE}   CAM Protocol - Quick Start Demo Script   ${NC}"
+echo -e "${BLUE}   CAM-OS Kernel - Quick Start Demo Script   ${NC}"
 echo -e "${BLUE}============================================${NC}"
 echo ""
 
@@ -30,55 +30,63 @@ if ! command -v docker-compose &> /dev/null; then
     exit 1
 fi
 
+# Check if grpcurl is available (for testing)
+if ! command -v grpcurl &> /dev/null; then
+    echo -e "${YELLOW}Note: grpcurl is not installed. You can install it to test the kernel.${NC}"
+    echo "Visit https://github.com/fullstorydev/grpcurl for installation instructions."
+fi
+
 # Create .env file if it doesn't exist
 if [ ! -f .env ]; then
     echo -e "${YELLOW}Creating .env file with demo settings...${NC}"
     cat > .env << EOL
-# CAM Protocol Demo Environment
-# For production use, replace these with your actual API keys
+# CAM-OS Kernel Demo Environment
+# For production use, replace these with your actual settings
 
-# API Keys (demo mode uses mock services)
-OPENAI_API_KEY=demo-key-replace-me
-ANTHROPIC_API_KEY=demo-key-replace-me
-
-# Service Configuration
-NODE_ENV=development
-LOG_LEVEL=info
-PORT=8080
-
-# Database Configuration
-DB_HOST=postgres
-DB_PORT=5432
-DB_USER=cam_user
-DB_PASSWORD=cam_password
-DB_NAME=cam_db
+# Kernel Configuration
+CAM_LOG_LEVEL=info
+CAM_GRPC_PORT=8080
+CAM_METRICS_PORT=9090
+CAM_DEVELOPMENT=true
 
 # Redis Configuration
-REDIS_HOST=redis
-REDIS_PORT=6379
+CAM_REDIS_URL=redis://redis:6379
+
+# Database Configuration
+CAM_POSTGRES_URL=postgres://cam_user:cam_password@postgres:5432/cam_db
+
+# Security Configuration (Demo Mode)
+CAM_SECURITY_ENABLED=false
+CAM_TPM_ENABLED=false
+CAM_POST_QUANTUM_ENABLED=false
 EOL
     echo -e "${GREEN}Created .env file with demo settings.${NC}"
 fi
 
 # Create necessary directories
-mkdir -p config
+mkdir -p drivers
 mkdir -p monitoring/prometheus
 mkdir -p monitoring/grafana/provisioning/datasources
 mkdir -p monitoring/grafana/provisioning/dashboards
 mkdir -p monitoring/grafana/dashboards
 
-# Create basic prometheus config if it doesn't exist
+# Create basic prometheus config for kernel metrics
 if [ ! -f monitoring/prometheus/prometheus.yml ]; then
-    echo -e "${YELLOW}Creating basic Prometheus configuration...${NC}"
+    echo -e "${YELLOW}Creating Prometheus configuration for kernel metrics...${NC}"
     cat > monitoring/prometheus/prometheus.yml << EOL
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'cam-core'
+  - job_name: 'cam-kernel'
     static_configs:
-      - targets: ['cam-core:8080']
+      - targets: ['cam-kernel:9090']
+    metrics_path: '/metrics'
+
+  - job_name: 'driver-runtime'
+    static_configs:
+      - targets: ['driver-runtime:8081']
     metrics_path: '/metrics'
 
   - job_name: 'prometheus'
@@ -114,7 +122,7 @@ if [ ! -f monitoring/grafana/provisioning/dashboards/dashboards.yml ]; then
 apiVersion: 1
 
 providers:
-  - name: 'CAM Protocol'
+  - name: 'CAM-OS Kernel'
     orgId: 1
     folder: ''
     type: file
@@ -128,27 +136,42 @@ EOL
     echo -e "${GREEN}Created Grafana dashboard provisioning configuration.${NC}"
 fi
 
-echo -e "${YELLOW}Starting CAM Protocol services...${NC}"
+# Create basic CAM-OS kernel manifest if it doesn't exist
+if [ ! -f MANIFEST.toml ]; then
+    echo -e "${YELLOW}Creating basic kernel manifest...${NC}"
+    cp MANIFEST.toml MANIFEST.toml.backup 2>/dev/null || true
+    echo -e "${GREEN}Using existing kernel manifest.${NC}"
+fi
+
+echo -e "${YELLOW}Starting CAM-OS kernel services...${NC}"
 docker-compose up -d
 
 echo ""
-echo -e "${GREEN}=== CAM Protocol Demo is now running! ===${NC}"
+echo -e "${GREEN}=== CAM-OS Kernel Demo is now running! ===${NC}"
 echo ""
 echo -e "Access the following services:"
-echo -e "  - ${BLUE}CAM Protocol API:${NC} http://localhost:8080"
-echo -e "  - ${BLUE}Mock OpenAI API:${NC} http://localhost:8081"
-echo -e "  - ${BLUE}Mock Anthropic API:${NC} http://localhost:8082"
+echo -e "  - ${BLUE}CAM-OS Kernel gRPC API:${NC} localhost:8080"
+echo -e "  - ${BLUE}Kernel Metrics:${NC} http://localhost:9090"
+echo -e "  - ${BLUE}Driver Runtime:${NC} http://localhost:8081"
 echo -e "  - ${BLUE}Grafana Dashboard:${NC} http://localhost:3000 (admin/admin)"
-echo -e "  - ${BLUE}Prometheus:${NC} http://localhost:9090"
+echo -e "  - ${BLUE}Prometheus:${NC} http://localhost:9091"
+echo -e "  - ${BLUE}Redis:${NC} localhost:6379"
+echo -e "  - ${BLUE}PostgreSQL:${NC} localhost:5432"
 echo ""
-echo -e "Try a test request:"
-echo -e "${YELLOW}curl -X POST http://localhost:8080/mesh/chat \\
-  -H \"Content-Type: application/json\" \\
-  -d '{\"message\": \"Hello world\", \"options\": {\"routing\": \"auto\"}}'${NC}"
+echo -e "Try test syscalls (requires grpcurl):"
+echo -e "${YELLOW}# Health check syscall"
+echo -e "grpcurl -plaintext -d '{}' localhost:8080 syscall.SyscallService/HealthCheck"
+echo ""
+echo -e "# Arbitration syscall"
+echo -e "grpcurl -plaintext -d '{\"task_id\": \"test-001\", \"options\": {\"provider\": \"demo\"}}' \\
+  localhost:8080 syscall.SyscallService/Arbitrate${NC}"
+echo ""
+echo -e "View kernel logs:"
+echo -e "${YELLOW}docker logs cam-kernel -f${NC}"
 echo ""
 echo -e "To stop the demo:"
 echo -e "${YELLOW}docker-compose down${NC}"
 echo ""
 echo -e "${BLUE}============================================${NC}"
-echo -e "${BLUE}   Thank you for trying the CAM Protocol!   ${NC}"
+echo -e "${BLUE}   Thank you for trying CAM-OS Kernel!     ${NC}"
 echo -e "${BLUE}============================================${NC}"
