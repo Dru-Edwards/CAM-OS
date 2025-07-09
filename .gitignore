@@ -351,3 +351,28 @@ TODO
 NOTES
 notes.txt
 todo.txt
+
+# Internal documentation - sensitive information not for public repo
+docs/LIMITATIONS.md
+docs/internal/
+docs/security-analysis/
+docs/vulnerability-reports/
+docs/competitive-analysis/
+docs/business-strategy/
+INTERNAL-*.md
+SENSITIVE-*.md
+CONFIDENTIAL-*.md
+
+# Business and strategy documents
+BUSINESS_PLAN.md
+COMPETITIVE_ANALYSIS.md
+FINANCIAL_PROJECTIONS.md
+PARTNERSHIP_AGREEMENTS.md
+LEGAL_REVIEW.md
+
+# Internal development notes
+DEVELOPMENT_NOTES.md
+ARCHITECTURE_DECISIONS.md
+PERFORMANCE_ANALYSIS.md
+SECURITY_REVIEW.md
+CODE_REVIEW_NOTES.md
