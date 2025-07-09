@@ -1,11 +1,14 @@
 # CAM-OS Kernel 🧠
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://golang.org/)
+[![CI](https://github.com/Dru-Edwards/CAM-OS/actions/workflows/ci.yml/badge.svg)](https://github.com/Dru-Edwards/CAM-OS/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](docker-compose.test.yml)
 [![Security](https://img.shields.io/badge/Security-Post--Quantum-green)](docs/security/)
 
 **CAM-OS** (Cognitive Arbitration Mesh Operating System) is a next-generation, AI-native cognitive operating system kernel designed for autonomous agent coordination, intelligent resource arbitration, and explainable AI governance.
+
+Detailed protobuf specification lives in [`proto/syscall.proto`](proto/syscall.proto) ([view raw ↗](https://raw.githubusercontent.com/Dru-Edwards/CAM-OS/main/proto/syscall.proto)).
 
 ## 🚀 Features
 
@@ -58,11 +61,17 @@
 
 ## 🚀 Quick Start
 
+| Method | Command | Description |
+|--------|---------|-------------|
+| **Docker (Recommended)** | `docker-compose -f docker-compose.test.yml up` | Complete test environment |
+| **Local Development** | `./scripts/dev-up.sh` | Local build with Redis |
+| **Production** | `helm install cam-os deployment/helm/cam-chart/` | Kubernetes deployment |
+
 ### Option 1: Docker Test Environment (Recommended)
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/cam-os-kernel.git
-cd cam-os-kernel
+git clone https://github.com/Dru-Edwards/CAM-OS.git
+cd CAM-OS
 
 # Run complete test environment
 ./quick-start-docker.sh
@@ -81,12 +90,11 @@ protoc --go_out=. --go-grpc_out=. proto/syscall.proto
 # Build kernel
 go build -o cam-kernel cmd/cam-kernel/main.go
 
-# Run with Redis
-redis-server &
-./cam-kernel
+# Start Redis and run kernel
+redis-server --daemonize yes && ./cam-kernel
 ```
 
-## 🧪 Testing
+## 🧪 Testing & Quality Gates
 
 The Docker test environment provides comprehensive testing:
 
@@ -97,6 +105,13 @@ The Docker test environment provides comprehensive testing:
 # Individual syscall testing
 grpcurl -plaintext -d '{"verb":"think", "payload":"solve problem"}' \
   localhost:50051 cam.SyscallService/Execute
+
+# Run benchmarks
+make bench
+
+# Fuzz testing (requires libFuzzer)
+make fuzz
+# Note: macOS users may need: brew install llvm && export CC=clang
 ```
 
 ### Test Coverage
@@ -136,7 +151,7 @@ See [Security Documentation](docs/security/) for details.
 
 ## 🔧 Development
 
-### Building from Source
+### Dev Workflow
 ```bash
 # Development build
 make build-dev
@@ -146,6 +161,9 @@ make build-prod
 
 # Run tests
 make test
+
+# Start development environment (includes Redis)
+./scripts/dev-up.sh
 
 # Generate docs
 make docs
@@ -178,14 +196,16 @@ Built-in observability with:
 - **Prometheus**: Metrics collection
 - **Grafana**: Performance dashboards
 - **Jaeger**: Distributed tracing
-- **Audit Logs**: Compliance tracking
+- **Loki/Splunk compatible audit logs**: Compliance tracking
 
 ## 🛣️ Roadmap
 
-- **v1.1**: Enhanced WASM driver runtime
-- **v1.2**: Multi-cluster federation
-- **v1.3**: Advanced ML model integration
-- **v2.0**: Quantum-safe key distribution
+| Version | Features | Target |
+|---------|----------|--------|
+| **v2.1** | Enhanced WASM driver runtime | Q3 2025 |
+| **v2.2** | Multi-cluster federation | Q4 2025 |
+| **v2.3** | Advanced ML model integration | Q1 2026 |
+| **v3.0** | Quantum-safe key distribution | Q2 2026 |
 
 See [ROADMAP.md](ROADMAP.md) for detailed timeline.
 
@@ -199,9 +219,9 @@ Enterprise features available under commercial license. Contact us for pricing.
 ## 🤝 Support
 
 - **Documentation**: [docs/](docs/)
-- **Issues**: [GitHub Issues](https://github.com/your-org/cam-os-kernel/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-org/cam-os-kernel/discussions)
-- **Enterprise Support**: Contact enterprise@cam-os.dev
+- **Issues**: [GitHub Issues](https://github.com/Dru-Edwards/CAM-OS/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Dru-Edwards/CAM-OS/discussions)
+- **Enterprise Support**: Contact [enterprise@cam-os.dev](mailto:enterprise@cam-os.dev)
 
 ## 🙏 Acknowledgments
 
