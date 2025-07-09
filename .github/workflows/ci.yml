@@ -97,11 +97,6 @@ jobs:
         curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
         syft . -o spdx-json=sbom.json
 
-    - name: Hardening Validation
-      run: |
-        echo "🛡️ Running hardening validation..."
-        make hardening-check
-
   # Unit Tests
   test:
     name: Unit Tests

@@ -107,7 +107,7 @@ CAM-OS provides 15 cognitive syscalls organized into 4 categories:
 - `sys_context_restore` - Context restoration from snapshots
 
 #### **Security & Trust**
-- `sys_tpm_sign` - TPM-based cryptographic signing
+- `sys_tmp_sign` - TPM-based cryptographic signing
 - `sys_verify_manifest` - Driver manifest verification
 - `sys_establish_secure_channel` - Post-quantum secure channels
 
@@ -236,7 +236,7 @@ CAM-OS implements enterprise-grade security with:
 - **Hardware Security**: TPM 2.0 integration for root of trust
 - **Process Isolation**: Sandboxed driver execution
 
-See [HARDENING-SPRINT.md](HARDENING-SPRINT.md) for security guidelines and [SECURITY.md](SECURITY.md) for vulnerability reporting.
+See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## License
 

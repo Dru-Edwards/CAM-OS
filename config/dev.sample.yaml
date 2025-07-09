@@ -1,0 +1,35 @@
+# CAM-OS Development Configuration Sample
+# Copy this file to config/dev.yaml and customize for your environment
+
+server:
+  port: 50051
+  metrics_port: 8080
+  health_port: 8081
+  host: "localhost"
+
+redis:
+  # Replace with your Redis connection string
+  url: "redis://localhost:6379"
+  # url: "redis://username:password@host:port/db"
+  
+security:
+  # Set to true in production
+  tls_enabled: false
+  # Generate your own JWT signing key
+  jwt_signing_key: "REPLACE_WITH_SECURE_KEY"
+  # Enable TPM in production
+  tpm_enabled: false
+  
+logging:
+  level: "debug"  # debug, info, warn, error
+  format: "json"  # json, text
+  
+performance:
+  max_workers: 100
+  timeout_ms: 1000
+  
+observability:
+  tracing_enabled: true
+  metrics_enabled: true
+  # Set to lower values in production
+  trace_sampling_rate: 1.0 

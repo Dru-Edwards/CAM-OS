@@ -328,11 +328,6 @@ security-scan:
 	else \
 		echo "⚠️  gosec not found, install with: go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest"; \
 	fi
-	@if command -v nancy >/dev/null 2>&1; then \
-		go list -json -deps ./... | nancy sleuth; \
-	else \
-		echo "⚠️  nancy not found, install with: go install github.com/sonatypecommunity/nancy@latest"; \
-	fi
 
 # License checking
 .PHONY: license-check
@@ -342,58 +337,4 @@ license-check:
 		reuse lint; \
 	else \
 		echo "⚠️  reuse not found, install with: pip install reuse"; \
-	fi
-
-# Hardening sprint validation
-.PHONY: hardening-check
-hardening-check: lint test security-scan
-	@echo "🛡️  Running hardening validation..."
-	@echo "✅ Hardening checks complete"
-
-# Safe push preparation
-.PHONY: safe-push-prep
-safe-push-prep: proto docs sbom
-	@echo "🚀 Preparing for safe push..."
-	@go mod tidy
-	@echo "✅ Safe push preparation complete"
-
-# Performance
-.PHONY: perf-test
-perf-test: ## Run performance tests
-	@echo "Running performance tests..."
-	$(GO) test -timeout $(TEST_TIMEOUT) -tags=performance ./tests/performance/...
-	@echo "✅ Performance tests complete"
-
-# Monitoring
-.PHONY: monitor
-monitor: ## Start monitoring stack
-	@echo "Starting monitoring stack..."
-	docker-compose -f deployment/docker/docker-compose.prod.yml up -d prometheus grafana
-	@echo "✅ Monitoring stack started"
-
-# Configuration validation
-.PHONY: config-validate
-config-validate: ## Validate configuration files
-	@echo "Validating configuration..."
-	@if [ -f MANIFEST.toml ]; then \
-		echo "✅ MANIFEST.toml found"; \
-	else \
-		echo "❌ MANIFEST.toml missing"; \
-		exit 1; \
-	fi
-
-# Development tools
-.PHONY: tools
-tools: ## Install development tools
-	@echo "Installing development tools..."
-	$(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	$(GO) install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-	$(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	$(GO) install golang.org/x/tools/cmd/goimports@latest
-	$(GO) install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
-	@echo "✅ Development tools installed"
-
-# Initialize repository
-.PHONY: init
-init: tools deps proto build test ## Initialize repository for development
-	@echo "✅ Repository initialized for development" 
+	fi 

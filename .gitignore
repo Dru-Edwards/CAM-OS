@@ -380,16 +380,34 @@ CODE_REVIEW_NOTES.md
 # secrets & configs
 *.env
 config/dev.yaml
+config/*.yaml
+!config/*.sample.yaml
 *.pem
 *.key
 *.crt
+*.p12
 stripe_*.json
 paypal_*.json
+*_keys_test.json
+
+# internal playbooks / SOP
+docs/blueprints/*Hardening*
+docs/blueprints/Safe*
+HARDENING-SPRINT.md
+scripts/safe-push.sh
+
+# secrets & licences
+docs/legal/ENTERPRISE_LICENSE.pdf
+docs/legal/*ENTERPRISE*
+
+# bulky artefacts
+tests/fuzz/corpus/
+coverage/
+*.prof
 
 # build outputs
 bin/
 *.wasm
-coverage/
 tests/fuzz/corpus/
 
 # IDE settings
@@ -476,3 +494,7 @@ jspm_packages/
 # Local configuration files
 config/local.yaml
 config/development.yaml
+
+# Kubernetes secrets
+*secret*.yaml
+*-secret.yaml
