@@ -15,14 +15,6 @@
 
 </div>
 
-# CAM‑OS Kernel 🧠
-
-[![build](https://img.shields.io/github/actions/workflow/status/Dru-Edwards/CAM-OS/ci.yml?label=CI)](https://github.com/Dru-Edwards/CAM-OS/actions)
-[![coverage](https://img.shields.io/codecov/c/github/Dru-Edwards/CAM-OS?label=cov)](https://codecov.io/gh/Dru-Edwards/CAM-OS)
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)](https://golang.org/)
-[![License](https://img.shields.io/badge/Apache‑2.0-blue)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](deployment/docker-compose.test.yml)
-[![Security](https://img.shields.io/badge/Security-Post‑Quantum-green)](docs/security/)
 
 > **CAM‑OS** is the **first AI‑native micro‑kernel** that treats autonomous *agents* the way Linux treats *processes.* It ships with sub‑millisecond decision loops, post‑quantum zero‑trust security, and built‑in explainability.
 
