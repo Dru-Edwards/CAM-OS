@@ -29,4 +29,16 @@ type TaskRollback struct {
 	TaskID    string
 	Reason    string
 	Timestamp time.Time
-} 
+}
+
+// Result represents the result of an arbitration operation
+type Result struct {
+	TaskID        string
+	AssignedAgent string
+	Provider      string
+	Confidence    float64
+	Reasoning     string
+	Metadata      map[string]string
+	TraceID       string
+	Timestamp     time.Time
+}
