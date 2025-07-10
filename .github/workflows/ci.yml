@@ -51,7 +51,11 @@ jobs:
       run: go mod download
 
     - name: Generate protobuf
-      run: make proto
+      run: |
+        cd proto
+        protoc --go_out=generated --go-grpc_out=generated \
+          --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative \
+          syscall.proto
 
     - name: Format check
       run: |
@@ -67,10 +71,13 @@ jobs:
     - name: Check Proto Drift
       run: |
         echo "🔍 Checking for proto drift..."
-        make proto
+        cd proto
+        protoc --go_out=generated --go-grpc_out=generated \
+          --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative \
+          syscall.proto
         if ! git diff --quiet; then
           echo "❌ Proto files are out of sync with generated code"
-          echo "Run 'make proto' and commit the changes"
+          echo "Run 'cd proto && protoc --go_out=generated --go-grpc_out=generated --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative syscall.proto' and commit the changes"
           git diff
           exit 1
         fi
@@ -90,12 +97,6 @@ jobs:
           exit 1
         fi
         echo "✅ No sensitive files found"
-
-    - name: Generate SBOM
-      run: |
-        echo "📋 Generating SBOM..."
-        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-        syft . -o spdx-json=sbom.json
 
   # Unit Tests
   test:
@@ -135,7 +136,11 @@ jobs:
       run: go mod download
 
     - name: Generate protobuf
-      run: make proto
+      run: |
+        cd proto
+        protoc --go_out=generated --go-grpc_out=generated \
+          --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative \
+          syscall.proto
 
     - name: Run unit tests
       run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
@@ -196,7 +201,11 @@ jobs:
       run: go mod download
 
     - name: Generate protobuf
-      run: make proto
+      run: |
+        cd proto
+        protoc --go_out=generated --go-grpc_out=generated \
+          --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative \
+          syscall.proto
 
     - name: Run integration tests
       run: |
@@ -254,7 +263,11 @@ jobs:
       run: go mod download
 
     - name: Generate protobuf
-      run: make proto
+      run: |
+        cd proto
+        protoc --go_out=generated --go-grpc_out=generated \
+          --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative \
+          syscall.proto
 
     - name: Build binary
       run: |

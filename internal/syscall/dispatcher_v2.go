@@ -17,17 +17,16 @@ import (
 // HardenedDispatcher is the new secure, modular syscall dispatcher
 type HardenedDispatcher struct {
 	pb.UnimplementedSyscallServiceServer
-	
+
 	// Handler interfaces
 	coreHandler          handlers.CoreHandler
 	memoryHandler        handlers.MemoryHandler
 	securityHandler      handlers.SecurityHandler
 	observabilityHandler handlers.ObservabilityHandler
-	
+
 	// Configuration and utilities
-	config         *Config
-	errorSanitizer *ErrorSanitizer
-	auditLogger    *log.Logger
+	config      *Config
+	auditLogger *log.Logger
 }
 
 // NewHardenedDispatcher creates a new hardened syscall dispatcher
@@ -42,47 +41,53 @@ func NewHardenedDispatcher(
 	if config == nil {
 		config = DefaultConfig()
 	}
-	
+
 	// Create audit logger
 	auditLogger := log.New(os.Stdout, "[AUDIT] ", log.LstdFlags|log.Lmicroseconds)
-	
+
 	// Create error sanitizer
-	errorSanitizer := NewErrorSanitizer(config.RedactErrorDetails, auditLogger)
-	
+	errorSanitizer := handlers.NewErrorSanitizer(config.RedactErrorDetails)
+
+	// Create handlers configuration
+	handlerConfig := &handlers.Config{
+		SyscallTimeout:     config.SyscallTimeout,
+		ArbitrationTimeout: config.ArbitrationTimeout,
+		RedactErrorDetails: config.RedactErrorDetails,
+	}
+
 	// Create handlers
 	coreHandler := handlers.NewCoreHandler(
 		arbitrationEngine,
 		policyEngine,
 		explainabilityEngine,
-		config,
+		handlerConfig,
 		errorSanitizer,
 	)
-	
+
 	memoryHandler := handlers.NewMemoryHandler(
 		memoryManager,
-		config,
+		handlerConfig,
 		errorSanitizer,
 	)
-	
+
 	securityHandler := handlers.NewSecurityHandler(
 		securityManager,
-		config,
+		handlerConfig,
 		errorSanitizer,
 	)
-	
+
 	observabilityHandler := handlers.NewObservabilityHandler(
 		explainabilityEngine,
-		config,
+		handlerConfig,
 		errorSanitizer,
 	)
-	
+
 	return &HardenedDispatcher{
 		coreHandler:          coreHandler,
 		memoryHandler:        memoryHandler,
 		securityHandler:      securityHandler,
 		observabilityHandler: observabilityHandler,
 		config:               config,
-		errorSanitizer:       errorSanitizer,
 		auditLogger:          auditLogger,
 	}
 }
@@ -189,4 +194,4 @@ func (d *HardenedDispatcher) EmitMetric(ctx context.Context, req *pb.EmitMetricR
 func (d *HardenedDispatcher) SystemTuning(ctx context.Context, req *pb.SystemTuningRequest) (*pb.SystemTuningResponse, error) {
 	d.auditLogger.Printf("SystemTuning called by %s with profile %s", req.CallerId, req.TuningProfile)
 	return d.observabilityHandler.SystemTuning(ctx, req)
-} 
+}

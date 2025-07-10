@@ -18,7 +18,7 @@ import (
 type RedisBackend struct {
 	client *redis.Client
 	config *BackendConfig
-	
+
 	// Metrics
 	metrics *BackendMetrics
 }
@@ -33,7 +33,7 @@ func (f *RedisFactory) CreateBackend(config *BackendConfig) (Backend, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid Redis connection string: %v", err)
 	}
-	
+
 	// Apply configuration overrides
 	if config.ConnectionTimeout > 0 {
 		opts.DialTimeout = config.ConnectionTimeout
@@ -47,12 +47,12 @@ func (f *RedisFactory) CreateBackend(config *BackendConfig) (Backend, error) {
 	if config.MaxConnections > 0 {
 		opts.PoolSize = config.MaxConnections
 	}
-	
+
 	client := redis.NewClient(opts)
-	
+
 	return &RedisBackend{
-		client: client,
-		config: config,
+		client:  client,
+		config:  config,
 		metrics: &BackendMetrics{},
 	}, nil
 }
@@ -68,7 +68,7 @@ func (r *RedisBackend) Initialize(ctx context.Context) error {
 	if err := r.client.Ping(ctx).Err(); err != nil {
 		return fmt.Errorf("failed to connect to Redis: %v", err)
 	}
-	
+
 	return nil
 }
 
@@ -84,7 +84,7 @@ func (r *RedisBackend) Read(ctx context.Context, namespace, key string, version 
 		r.metrics.AvgLatency = time.Since(start)
 		r.metrics.TotalReads++
 	}()
-	
+
 	// Construct Redis key
 	var redisKey string
 	if version == 0 {
@@ -92,7 +92,7 @@ func (r *RedisBackend) Read(ctx context.Context, namespace, key string, version 
 	} else {
 		redisKey = fmt.Sprintf("ctx:%s:%s:%d", namespace, key, version)
 	}
-	
+
 	// Get from Redis
 	data, err := r.client.Get(ctx, redisKey).Bytes()
 	if err != nil {
@@ -103,16 +103,16 @@ func (r *RedisBackend) Read(ctx context.Context, namespace, key string, version 
 		r.metrics.ErrorCount++
 		return nil, fmt.Errorf("failed to read from Redis: %v", err)
 	}
-	
+
 	r.metrics.CacheHits++
-	
+
 	// Deserialize data
 	var contextData ContextData
 	if err := json.Unmarshal(data, &contextData); err != nil {
 		r.metrics.ErrorCount++
 		return nil, fmt.Errorf("failed to deserialize data: %v", err)
 	}
-	
+
 	// Decompress if needed
 	if r.config.CompressionEnabled && len(contextData.Data) > 0 {
 		decompressed, err := r.decompress(contextData.Data)
@@ -122,7 +122,7 @@ func (r *RedisBackend) Read(ctx context.Context, namespace, key string, version 
 		}
 		contextData.Data = decompressed
 	}
-	
+
 	return &contextData, nil
 }
 
@@ -133,14 +133,14 @@ func (r *RedisBackend) Write(ctx context.Context, namespace, key string, data []
 		r.metrics.AvgLatency = time.Since(start)
 		r.metrics.TotalWrites++
 	}()
-	
+
 	// Generate version (timestamp-based)
 	version := time.Now().UnixNano()
-	
+
 	// Calculate hash
 	hash := sha256.Sum256(data)
 	hashStr := hex.EncodeToString(hash[:])
-	
+
 	// Compress data if enabled
 	dataToStore := data
 	if r.config.CompressionEnabled {
@@ -152,7 +152,7 @@ func (r *RedisBackend) Write(ctx context.Context, namespace, key string, data []
 		dataToStore = compressed
 		r.metrics.CompressionRatio = float64(len(compressed)) / float64(len(data))
 	}
-	
+
 	// Create context data
 	contextData := ContextData{
 		Data:      dataToStore,
@@ -161,28 +161,28 @@ func (r *RedisBackend) Write(ctx context.Context, namespace, key string, data []
 		Timestamp: time.Now(),
 		Metadata:  metadata,
 	}
-	
+
 	// Serialize data
 	serialized, err := json.Marshal(contextData)
 	if err != nil {
 		r.metrics.ErrorCount++
 		return nil, fmt.Errorf("failed to serialize data: %v", err)
 	}
-	
+
 	// Store in Redis with TTL
 	redisKey := fmt.Sprintf("ctx:%s:%s:%d", namespace, key, version)
 	if err := r.client.Set(ctx, redisKey, serialized, r.config.TTL).Err(); err != nil {
 		r.metrics.ErrorCount++
 		return nil, fmt.Errorf("failed to write to Redis: %v", err)
 	}
-	
+
 	// Update latest pointer
 	latestKey := fmt.Sprintf("ctx:%s:%s:latest", namespace, key)
 	if err := r.client.Set(ctx, latestKey, serialized, r.config.TTL).Err(); err != nil {
 		r.metrics.ErrorCount++
 		return nil, fmt.Errorf("failed to update latest pointer: %v", err)
 	}
-	
+
 	// Store version metadata
 	versionKey := fmt.Sprintf("ctx:%s:%s:versions", namespace, key)
 	versionInfo := map[string]interface{}{
@@ -196,12 +196,12 @@ func (r *RedisBackend) Write(ctx context.Context, namespace, key string, data []
 		r.metrics.ErrorCount++
 		return nil, fmt.Errorf("failed to store version metadata: %v", err)
 	}
-	
+
 	// Limit version history
 	if r.config.VersionRetention > 0 {
 		r.client.LTrim(ctx, versionKey, 0, int64(r.config.VersionRetention-1))
 	}
-	
+
 	return &WriteResult{
 		Version: version,
 		Hash:    hashStr,
@@ -218,7 +218,7 @@ func (r *RedisBackend) Delete(ctx context.Context, namespace, key string, versio
 		if err != nil {
 			return fmt.Errorf("failed to get keys for deletion: %v", err)
 		}
-		
+
 		if len(keys) > 0 {
 			return r.client.Del(ctx, keys...).Err()
 		}
@@ -238,7 +238,7 @@ func (r *RedisBackend) CreateNamespace(ctx context.Context, namespace string) er
 		"created_at": time.Now().Unix(),
 		"name":       namespace,
 	}
-	
+
 	data, _ := json.Marshal(metadata)
 	return r.client.Set(ctx, namespaceKey, data, 0).Err() // No TTL for namespace metadata
 }
@@ -251,14 +251,14 @@ func (r *RedisBackend) DeleteNamespace(ctx context.Context, namespace string) er
 	if err != nil {
 		return fmt.Errorf("failed to get namespace keys: %v", err)
 	}
-	
+
 	// Add namespace metadata key
 	keys = append(keys, fmt.Sprintf("ns:%s:metadata", namespace))
-	
+
 	if len(keys) > 0 {
 		return r.client.Del(ctx, keys...).Err()
 	}
-	
+
 	return nil
 }
 
@@ -269,7 +269,7 @@ func (r *RedisBackend) ListNamespaces(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get namespace keys: %v", err)
 	}
-	
+
 	var namespaces []string
 	for _, key := range keys {
 		// Extract namespace from key: ns:namespace:metadata
@@ -278,7 +278,7 @@ func (r *RedisBackend) ListNamespaces(ctx context.Context) ([]string, error) {
 			namespaces = append(namespaces, parts[1])
 		}
 	}
-	
+
 	return namespaces, nil
 }
 
@@ -289,19 +289,19 @@ func (r *RedisBackend) ListVersions(ctx context.Context, namespace, key string) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get versions: %v", err)
 	}
-	
+
 	var versions []int64
 	for _, data := range versionData {
 		var versionInfo map[string]interface{}
 		if err := json.Unmarshal([]byte(data), &versionInfo); err != nil {
 			continue
 		}
-		
+
 		if versionFloat, ok := versionInfo["version"].(float64); ok {
 			versions = append(versions, int64(versionFloat))
 		}
 	}
-	
+
 	return versions, nil
 }
 
@@ -312,62 +312,61 @@ func (r *RedisBackend) GetVersion(ctx context.Context, namespace, key string, ve
 
 // CreateSnapshot creates a snapshot of a namespace
 func (r *RedisBackend) CreateSnapshot(ctx context.Context, namespace, description string) (string, error) {
-	start := time.Now()
 	defer func() {
 		r.metrics.TotalSnapshots++
 	}()
-	
+
 	// Generate snapshot ID
 	snapshotID := fmt.Sprintf("snap_%s_%d", namespace, time.Now().UnixNano())
-	
+
 	// Get all keys in namespace
 	pattern := fmt.Sprintf("ctx:%s:*", namespace)
 	keys, err := r.client.Keys(ctx, pattern).Result()
 	if err != nil {
 		return "", fmt.Errorf("failed to get keys: %v", err)
 	}
-	
+
 	// Create snapshot data
 	snapshotData := make(map[string]interface{})
 	totalSize := int64(0)
-	
+
 	for _, key := range keys {
 		// Skip version metadata and latest pointers for now
 		if strings.Contains(key, ":versions") || strings.Contains(key, ":latest") {
 			continue
 		}
-		
+
 		data, err := r.client.Get(ctx, key).Bytes()
 		if err != nil {
 			continue // Skip failed keys
 		}
-		
+
 		snapshotData[key] = data
 		totalSize += int64(len(data))
 	}
-	
+
 	// Serialize snapshot
 	serialized, err := json.Marshal(snapshotData)
 	if err != nil {
 		return "", fmt.Errorf("failed to serialize snapshot: %v", err)
 	}
-	
+
 	// Compress snapshot
 	compressed, err := r.compress(serialized)
 	if err != nil {
 		return "", fmt.Errorf("failed to compress snapshot: %v", err)
 	}
-	
+
 	// Calculate hash
 	hash := sha256.Sum256(compressed)
 	hashStr := hex.EncodeToString(hash[:])
-	
+
 	// Store snapshot
 	snapshotKey := fmt.Sprintf("snapshot:%s", snapshotID)
 	if err := r.client.Set(ctx, snapshotKey, compressed, r.config.SnapshotRetention).Err(); err != nil {
 		return "", fmt.Errorf("failed to store snapshot: %v", err)
 	}
-	
+
 	// Store snapshot metadata
 	snapshotInfo := SnapshotInfo{
 		ID:          snapshotID,
@@ -378,13 +377,13 @@ func (r *RedisBackend) CreateSnapshot(ctx context.Context, namespace, descriptio
 		Hash:        hashStr,
 		Compressed:  true,
 	}
-	
+
 	metadataKey := fmt.Sprintf("snapshot:%s:metadata", snapshotID)
 	metadataData, _ := json.Marshal(snapshotInfo)
 	if err := r.client.Set(ctx, metadataKey, metadataData, r.config.SnapshotRetention).Err(); err != nil {
 		return "", fmt.Errorf("failed to store snapshot metadata: %v", err)
 	}
-	
+
 	return snapshotID, nil
 }
 
@@ -399,38 +398,38 @@ func (r *RedisBackend) RestoreSnapshot(ctx context.Context, snapshotID string, f
 		}
 		return fmt.Errorf("failed to get snapshot: %v", err)
 	}
-	
+
 	// Get snapshot metadata
 	metadataKey := fmt.Sprintf("snapshot:%s:metadata", snapshotID)
 	metadataData, err := r.client.Get(ctx, metadataKey).Bytes()
 	if err != nil {
 		return fmt.Errorf("failed to get snapshot metadata: %v", err)
 	}
-	
+
 	var snapshotInfo SnapshotInfo
 	if err := json.Unmarshal(metadataData, &snapshotInfo); err != nil {
 		return fmt.Errorf("failed to deserialize snapshot metadata: %v", err)
 	}
-	
+
 	// Decompress snapshot
 	decompressed, err := r.decompress(compressed)
 	if err != nil {
 		return fmt.Errorf("failed to decompress snapshot: %v", err)
 	}
-	
+
 	// Deserialize snapshot data
 	var snapshotData map[string]interface{}
 	if err := json.Unmarshal(decompressed, &snapshotData); err != nil {
 		return fmt.Errorf("failed to deserialize snapshot data: %v", err)
 	}
-	
+
 	// Clear existing namespace data if force is true
 	if force {
 		if err := r.DeleteNamespace(ctx, snapshotInfo.Namespace); err != nil {
 			return fmt.Errorf("failed to clear namespace: %v", err)
 		}
 	}
-	
+
 	// Restore data
 	for key, data := range snapshotData {
 		dataBytes, ok := data.([]byte)
@@ -442,12 +441,12 @@ func (r *RedisBackend) RestoreSnapshot(ctx context.Context, snapshotID string, f
 				continue // Skip invalid data
 			}
 		}
-		
+
 		if err := r.client.Set(ctx, key, dataBytes, r.config.TTL).Err(); err != nil {
 			continue // Skip failed keys
 		}
 	}
-	
+
 	return nil
 }
 
@@ -458,22 +457,22 @@ func (r *RedisBackend) ListSnapshots(ctx context.Context, namespace string) ([]S
 	if err != nil {
 		return nil, fmt.Errorf("failed to get snapshot keys: %v", err)
 	}
-	
+
 	var snapshots []SnapshotInfo
 	for _, key := range keys {
 		data, err := r.client.Get(ctx, key).Bytes()
 		if err != nil {
 			continue
 		}
-		
+
 		var snapshotInfo SnapshotInfo
 		if err := json.Unmarshal(data, &snapshotInfo); err != nil {
 			continue
 		}
-		
+
 		snapshots = append(snapshots, snapshotInfo)
 	}
-	
+
 	return snapshots, nil
 }
 
@@ -481,14 +480,14 @@ func (r *RedisBackend) ListSnapshots(ctx context.Context, namespace string) ([]S
 func (r *RedisBackend) DeleteSnapshot(ctx context.Context, snapshotID string) error {
 	snapshotKey := fmt.Sprintf("snapshot:%s", snapshotID)
 	metadataKey := fmt.Sprintf("snapshot:%s:metadata", snapshotID)
-	
+
 	return r.client.Del(ctx, snapshotKey, metadataKey).Err()
 }
 
 // BatchWrite performs batch write operations
 func (r *RedisBackend) BatchWrite(ctx context.Context, operations []WriteOperation) ([]WriteResult, error) {
 	results := make([]WriteResult, len(operations))
-	
+
 	for i, op := range operations {
 		result, err := r.Write(ctx, op.Namespace, op.Key, op.Data, op.Metadata)
 		if err != nil {
@@ -497,14 +496,14 @@ func (r *RedisBackend) BatchWrite(ctx context.Context, operations []WriteOperati
 			results[i] = *result
 		}
 	}
-	
+
 	return results, nil
 }
 
 // BatchRead performs batch read operations
 func (r *RedisBackend) BatchRead(ctx context.Context, operations []ReadOperation) ([]ReadResult, error) {
 	results := make([]ReadResult, len(operations))
-	
+
 	for i, op := range operations {
 		data, err := r.Read(ctx, op.Namespace, op.Key, op.Version)
 		results[i] = ReadResult{
@@ -512,7 +511,7 @@ func (r *RedisBackend) BatchRead(ctx context.Context, operations []ReadOperation
 			Error: err,
 		}
 	}
-	
+
 	return results, nil
 }
 
@@ -538,7 +537,7 @@ func (r *RedisBackend) GetMetrics(ctx context.Context) (*BackendMetrics, error) 
 			}
 		}
 	}
-	
+
 	return r.metrics, nil
 }
 
@@ -547,12 +546,12 @@ func (r *RedisBackend) compress(data []byte) ([]byte, error) {
 	if !r.config.CompressionEnabled {
 		return data, nil
 	}
-	
+
 	var compressed []byte
 	if _, err := lz4.CompressBlock(data, compressed, nil); err != nil {
 		return nil, err
 	}
-	
+
 	return compressed, nil
 }
 
@@ -560,16 +559,16 @@ func (r *RedisBackend) decompress(data []byte) ([]byte, error) {
 	if !r.config.CompressionEnabled {
 		return data, nil
 	}
-	
+
 	var decompressed []byte
 	if _, err := lz4.UncompressBlock(data, decompressed); err != nil {
 		return nil, err
 	}
-	
+
 	return decompressed, nil
 }
 
 // Register Redis backend factory
 func init() {
 	DefaultRegistry.Register("redis", &RedisFactory{})
-} 
+}

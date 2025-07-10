@@ -2,7 +2,6 @@ package policy
 
 import (
 	"context"
-	"fmt"
 )
 
 // QueryResult represents the result of a policy query
@@ -75,4 +74,11 @@ func (e *Engine) Query(ctx context.Context, policyID, query string, context map[
 func (e *Engine) HealthCheck(ctx context.Context) error {
 	// Check if policy engine is healthy
 	return nil
+}
+
+// Update updates a policy
+func (e *Engine) Update(ctx context.Context, policyID string, policyData []byte, metadata map[string]string) (string, error) {
+	// Simple policy update - in a real implementation this would persist to storage
+	// Return version string
+	return "v1.0.0", nil
 } 

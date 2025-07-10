@@ -81,14 +81,25 @@ build-all: proto ## Build for all supported platforms
 
 # Protocol Buffers
 .PHONY: proto
-proto:
+proto: ## Generate protobuf files
 	@echo "🔄 Generating protobuf code..."
 	@if command -v protoc >/dev/null 2>&1; then \
-		protoc --go_out=. --go-grpc_out=. proto/syscall.proto; \
+		cd proto && \
+		protoc --go_out=generated --go-grpc_out=generated \
+		       --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative \
+		       syscall.proto; \
 		echo "✅ Protobuf generation complete"; \
 	else \
 		echo "⚠️  protoc not found, skipping proto generation"; \
+		echo "   Install protoc and run 'make proto' to generate protobuf files"; \
 	fi
+
+.PHONY: proto-install
+proto-install: ## Install protobuf tools
+	@echo "📦 Installing protobuf tools..."
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+	@echo "✅ Protobuf tools installed"
 
 .PHONY: proto-check
 proto-check: ## Check if protobuf files need regeneration

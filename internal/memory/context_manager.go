@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -758,9 +757,6 @@ func (cm *ContextManager) CompactNamespace(ctx context.Context, namespace string
 		}
 		
 		if count > int64(keepVersions) {
-			// Remove old versions
-			toRemove := count - int64(keepVersions)
-			
 			// Get versions to remove
 			versionsToRemove, err := cm.redisClient.LRange(ctx, versionKey, int64(keepVersions), -1).Result()
 			if err != nil {

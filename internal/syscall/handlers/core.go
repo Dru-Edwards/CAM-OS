@@ -8,18 +8,90 @@ import (
 	"github.com/cam-os/kernel/internal/arbitration"
 	"github.com/cam-os/kernel/internal/explainability"
 	"github.com/cam-os/kernel/internal/policy"
-	"github.com/cam-os/kernel/internal/syscall"
 	pb "github.com/cam-os/kernel/proto/generated"
 	"google.golang.org/grpc/codes"
 )
+
+// Config represents the configuration for handlers
+type Config struct {
+	SyscallTimeout     time.Duration
+	ArbitrationTimeout time.Duration
+	RedactErrorDetails bool
+}
+
+// ErrorSanitizer handles error sanitization
+type ErrorSanitizer struct {
+	redactDetails bool
+}
+
+// NewErrorSanitizer creates a new error sanitizer
+func NewErrorSanitizer(redactDetails bool) *ErrorSanitizer {
+	return &ErrorSanitizer{redactDetails: redactDetails}
+}
+
+// SanitizeError sanitizes errors for external consumption
+func (e *ErrorSanitizer) SanitizeError(err error, operation, callerID string) (codes.Code, string) {
+	if err == nil {
+		return codes.OK, ""
+	}
+	
+	// Check for timeout errors
+	if err.Error() == "operation timed out" {
+		return codes.DeadlineExceeded, "operation timed out"
+	}
+	
+	// If redaction is enabled, return generic error
+	if e.redactDetails {
+		return codes.Internal, "internal error occurred"
+	}
+	
+	// Return original error
+	return codes.Internal, err.Error()
+}
+
+// ValidateAgentID validates agent ID format
+func (c *Config) ValidateAgentID(agentID string) error {
+	if len(agentID) == 0 {
+		return fmt.Errorf("agent ID cannot be empty")
+	}
+	if len(agentID) > 255 {
+		return fmt.Errorf("agent ID too long")
+	}
+	return nil
+}
+
+// ValidateKey validates key format
+func (c *Config) ValidateKey(key string) error {
+	if len(key) == 0 {
+		return fmt.Errorf("key cannot be empty")
+	}
+	if len(key) > 255 {
+		return fmt.Errorf("key too long")
+	}
+	return nil
+}
+
+// TimeoutError represents a timeout error
+type TimeoutError struct {
+	operation string
+}
+
+func (e *TimeoutError) Error() string {
+	return "operation timed out"
+}
+
+// NewTimeoutError creates a new timeout error
+func NewTimeoutError(operation string) error {
+	return &TimeoutError{operation: operation}
+}
 
 // coreHandler implements CoreHandler interface
 type coreHandler struct {
 	arbitrationEngine   *arbitration.Engine
 	policyEngine       *policy.Engine
 	explainabilityEngine *explainability.Engine
-	config             *syscall.Config
-	errorSanitizer     *syscall.ErrorSanitizer
+	config             *Config
+	errorSanitizer     *ErrorSanitizer
 }
 
 // NewCoreHandler creates a new core handler
@@ -27,8 +99,8 @@ func NewCoreHandler(
 	arbitrationEngine *arbitration.Engine,
 	policyEngine *policy.Engine,
 	explainabilityEngine *explainability.Engine,
-	config *syscall.Config,
-	errorSanitizer *syscall.ErrorSanitizer,
+	config *Config,
+	errorSanitizer *ErrorSanitizer,
 ) CoreHandler {
 	return &coreHandler{
 		arbitrationEngine:   arbitrationEngine,
@@ -93,7 +165,7 @@ func (h *coreHandler) Arbitrate(ctx context.Context, req *pb.ArbitrateRequest) (
 	if err != nil {
 		// Handle context timeout
 		if ctx.Err() == context.DeadlineExceeded {
-			err = syscall.NewTimeoutError(operation)
+			err = NewTimeoutError(operation)
 		}
 		
 		code, message := h.errorSanitizer.SanitizeError(err, operation, req.CallerId)
@@ -174,7 +246,7 @@ func (h *coreHandler) CommitTask(ctx context.Context, req *pb.CommitTaskRequest)
 	commitID, err := h.arbitrationEngine.CommitTask(ctx, task, req.AgentId)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			err = syscall.NewTimeoutError(operation)
+			err = NewTimeoutError(operation)
 		}
 		
 		code, message := h.errorSanitizer.SanitizeError(err, operation, req.CallerId)
@@ -216,7 +288,7 @@ func (h *coreHandler) TaskRollback(ctx context.Context, req *pb.TaskRollbackRequ
 	err := h.arbitrationEngine.RollbackTask(ctx, req.TaskId, req.Reason)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			err = syscall.NewTimeoutError(operation)
+			err = NewTimeoutError(operation)
 		}
 		
 		code, message := h.errorSanitizer.SanitizeError(err, operation, req.CallerId)
@@ -265,7 +337,7 @@ func (h *coreHandler) AgentRegister(ctx context.Context, req *pb.AgentRegisterRe
 	err := h.arbitrationEngine.RegisterAgent(ctx, req.AgentId, req.Capabilities, req.Metadata)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			err = syscall.NewTimeoutError(operation)
+			err = NewTimeoutError(operation)
 		}
 		
 		code, message := h.errorSanitizer.SanitizeError(err, operation, req.CallerId)
@@ -308,7 +380,7 @@ func (h *coreHandler) QueryPolicy(ctx context.Context, req *pb.QueryPolicyReques
 	result, err := h.policyEngine.Query(ctx, req.PolicyId, req.Query, req.Context)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			err = syscall.NewTimeoutError(operation)
+			err = NewTimeoutError(operation)
 		}
 		
 		code, message := h.errorSanitizer.SanitizeError(err, operation, req.CallerId)
@@ -358,7 +430,7 @@ func (h *coreHandler) PolicyUpdate(ctx context.Context, req *pb.PolicyUpdateRequ
 	version, err := h.policyEngine.Update(ctx, req.PolicyId, req.PolicyData, req.Metadata)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			err = syscall.NewTimeoutError(operation)
+			err = NewTimeoutError(operation)
 		}
 		
 		code, message := h.errorSanitizer.SanitizeError(err, operation, req.CallerId)

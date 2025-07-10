@@ -2,7 +2,6 @@ package syscall
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"strings"
 	"sync"
@@ -18,10 +17,10 @@ import (
 
 // AuthMiddleware handles authentication and authorization
 type AuthMiddleware struct {
-	requireMTLS    bool
-	trustedCAs     []string
-	jwtValidator   JWTValidator
-	policyEngine   PolicyEngine
+	requireMTLS  bool
+	trustedCAs   []string
+	jwtValidator JWTValidator
+	policyEngine PolicyEngine
 }
 
 // RateLimiter implements token bucket rate limiting per client
@@ -35,8 +34,8 @@ type RateLimiter struct {
 
 // TokenBucket represents a token bucket for rate limiting
 type TokenBucket struct {
-	tokens    int
-	maxTokens int
+	tokens     int
+	maxTokens  int
 	lastRefill time.Time
 	refillRate time.Duration
 }
@@ -164,7 +163,7 @@ func (am *AuthMiddleware) validateMTLS(ctx context.Context) error {
 
 	// Validate certificate chain
 	cert := tlsInfo.State.PeerCertificates[0]
-	
+
 	// Check certificate validity
 	now := time.Now()
 	if now.Before(cert.NotBefore) || now.After(cert.NotAfter) {
@@ -201,7 +200,7 @@ func (am *AuthMiddleware) validateJWT(ctx context.Context) (*Claims, error) {
 func (am *AuthMiddleware) authorize(ctx context.Context, claims *Claims, method string) error {
 	// Extract action and resource from method
 	action, resource := parseGRPCMethod(method)
-	
+
 	// Check authorization
 	allowed, err := am.policyEngine.Authorize(ctx, claims.Subject, action, resource)
 	if err != nil {
@@ -276,13 +275,13 @@ func (rl *RateLimiter) StartCleanupRoutine() {
 // parseGRPCMethod extracts action and resource from gRPC method name
 func parseGRPCMethod(method string) (action, resource string) {
 	// Example: "/cam.SyscallService/Arbitrate" -> action: "arbitrate", resource: "tasks"
-	
+
 	// Extract method name from full path
 	if len(method) > 0 && method[0] == '/' {
 		parts := strings.Split(method[1:], "/")
 		if len(parts) == 2 {
 			methodName := strings.ToLower(parts[1])
-			
+
 			// Map methods to actions and resources
 			methodMap := map[string][2]string{
 				"arbitrate":              {"arbitrate", "tasks"},
@@ -304,13 +303,13 @@ func parseGRPCMethod(method string) (action, resource string) {
 				"systemtuning":           {"tune", "system"},
 				"healthcheck":            {"check", "health"},
 			}
-			
+
 			if mapping, exists := methodMap[methodName]; exists {
 				return mapping[0], mapping[1]
 			}
 		}
 	}
-	
+
 	return "unknown", "unknown"
 }
 
@@ -330,10 +329,10 @@ func GetClientID(ctx context.Context) string {
 	return "unknown"
 }
 
-// GetClaims extracts JWT claims from context (utility function)  
+// GetClaims extracts JWT claims from context (utility function)
 func GetClaims(ctx context.Context) *Claims {
 	if claims, ok := ctx.Value("claims").(*Claims); ok {
 		return claims
 	}
 	return nil
-} 
+}

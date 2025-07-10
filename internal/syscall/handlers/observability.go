@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/cam-os/kernel/internal/explainability"
-	"github.com/cam-os/kernel/internal/syscall"
 	pb "github.com/cam-os/kernel/proto/generated"
 	"google.golang.org/grpc/codes"
 )
@@ -13,15 +12,15 @@ import (
 // observabilityHandler implements ObservabilityHandler interface
 type observabilityHandler struct {
 	explainabilityEngine *explainability.Engine
-	config               *syscall.Config
-	errorSanitizer       *syscall.ErrorSanitizer
+	config               *Config
+	errorSanitizer       *ErrorSanitizer
 }
 
 // NewObservabilityHandler creates a new observability handler
 func NewObservabilityHandler(
 	explainabilityEngine *explainability.Engine,
-	config *syscall.Config,
-	errorSanitizer *syscall.ErrorSanitizer,
+	config *Config,
+	errorSanitizer *ErrorSanitizer,
 ) ObservabilityHandler {
 	return &observabilityHandler{
 		explainabilityEngine: explainabilityEngine,
@@ -36,7 +35,7 @@ func (h *observabilityHandler) ExplainAction(ctx context.Context, req *pb.Explai
 	operation := "explain_action"
 	
 	// Apply timeout
-	ctx, cancel := context.WithTimeout(ctx, h.config.ExplainabilityTimeout)
+	ctx, cancel := context.WithTimeout(ctx, h.config.SyscallTimeout)
 	defer cancel()
 	
 	// Validate request
@@ -59,7 +58,7 @@ func (h *observabilityHandler) ExplainAction(ctx context.Context, req *pb.Explai
 	explanation, err := h.explainabilityEngine.Explain(ctx, req.TraceId, req.IncludeReasoning)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			err = syscall.NewTimeoutError(operation)
+			err = NewTimeoutError(operation)
 		}
 		
 		code, message := h.errorSanitizer.SanitizeError(err, operation, req.CallerId)
@@ -89,7 +88,7 @@ func (h *observabilityHandler) EmitTrace(ctx context.Context, req *pb.EmitTraceR
 	operation := "emit_trace"
 	
 	// Apply timeout
-	ctx, cancel := context.WithTimeout(ctx, h.config.ExplainabilityTimeout)
+	ctx, cancel := context.WithTimeout(ctx, h.config.SyscallTimeout)
 	defer cancel()
 	
 	// Validate request
@@ -152,7 +151,7 @@ func (h *observabilityHandler) EmitTrace(ctx context.Context, req *pb.EmitTraceR
 	})
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			err = syscall.NewTimeoutError(operation)
+			err = NewTimeoutError(operation)
 		}
 		
 		code, message := h.errorSanitizer.SanitizeError(err, operation, req.CallerId)
@@ -178,7 +177,7 @@ func (h *observabilityHandler) EmitMetric(ctx context.Context, req *pb.EmitMetri
 	operation := "emit_metric"
 	
 	// Apply timeout
-	ctx, cancel := context.WithTimeout(ctx, h.config.ExplainabilityTimeout)
+	ctx, cancel := context.WithTimeout(ctx, h.config.SyscallTimeout)
 	defer cancel()
 	
 	// Validate request
@@ -246,7 +245,7 @@ func (h *observabilityHandler) EmitMetric(ctx context.Context, req *pb.EmitMetri
 	})
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			err = syscall.NewTimeoutError(operation)
+			err = NewTimeoutError(operation)
 		}
 		
 		code, message := h.errorSanitizer.SanitizeError(err, operation, req.CallerId)
@@ -328,7 +327,7 @@ func (h *observabilityHandler) SystemTuning(ctx context.Context, req *pb.SystemT
 	result, err := h.explainabilityEngine.ApplySystemTuning(ctx, req.Parameters, req.TuningProfile, req.DryRun)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			err = syscall.NewTimeoutError(operation)
+			err = NewTimeoutError(operation)
 		}
 		
 		code, message := h.errorSanitizer.SanitizeError(err, operation, req.CallerId)

@@ -14,107 +14,107 @@ import (
 
 // NLQueryInterface provides natural language querying capabilities
 type NLQueryInterface struct {
-	config          *NLConfig
-	explainability  *explainability.Engine
-	memory          *memory.ContextManager
-	policy          *policy.Engine
-	
+	config         *NLConfig
+	explainability *explainability.Engine
+	memory         *memory.ContextManager
+	policy         *policy.Engine
+
 	// NLP components
-	parser          *QueryParser
-	intentClassifier *IntentClassifier
-	entityExtractor  *EntityExtractor
+	parser            *QueryParser
+	intentClassifier  *IntentClassifier
+	entityExtractor   *EntityExtractor
 	responseGenerator *ResponseGenerator
-	
+
 	// Query processing
-	queryHistory    []ProcessedQuery
-	sessionContext  map[string]*QuerySession
-	
+	queryHistory   []ProcessedQuery
+	sessionContext map[string]*QuerySession
+
 	// Metrics
-	metrics         *NLMetrics
-	mutex           sync.RWMutex
+	metrics *NLMetrics
+	mutex   sync.RWMutex
 }
 
 // NLConfig configures the natural language interface
 type NLConfig struct {
 	// Language settings
-	DefaultLanguage   string
+	DefaultLanguage    string
 	SupportedLanguages []string
-	
+
 	// NLP model settings
-	ModelProvider     string // "openai", "anthropic", "local"
-	ModelName         string
-	APIKey            string
-	MaxTokens         int
-	Temperature       float64
-	
+	ModelProvider string // "openai", "anthropic", "local"
+	ModelName     string
+	APIKey        string
+	MaxTokens     int
+	Temperature   float64
+
 	// Query processing
-	MaxQueryLength    int
-	QueryTimeout      time.Duration
-	CacheEnabled      bool
-	CacheTTL          time.Duration
-	
+	MaxQueryLength int
+	QueryTimeout   time.Duration
+	CacheEnabled   bool
+	CacheTTL       time.Duration
+
 	// Response settings
 	MaxResponseLength int
 	IncludeMetadata   bool
 	ExplainReasoning  bool
-	
+
 	// Security
-	AllowedQueries    []string
-	BlockedQueries    []string
-	RequireAuth       bool
-	AuditQueries      bool
+	AllowedQueries []string
+	BlockedQueries []string
+	RequireAuth    bool
+	AuditQueries   bool
 }
 
 // QuerySession represents a user's query session
 type QuerySession struct {
-	SessionID     string
-	UserID        string
-	StartTime     time.Time
-	LastActivity  time.Time
-	
+	SessionID    string
+	UserID       string
+	StartTime    time.Time
+	LastActivity time.Time
+
 	// Context
-	Context       map[string]interface{}
-	QueryHistory  []ProcessedQuery
-	
+	Context      map[string]interface{}
+	QueryHistory []ProcessedQuery
+
 	// Preferences
-	Language      string
-	DetailLevel   string // "brief", "detailed", "technical"
-	OutputFormat  string // "text", "json", "table"
+	Language     string
+	DetailLevel  string // "brief", "detailed", "technical"
+	OutputFormat string // "text", "json", "table"
 }
 
 // ProcessedQuery represents a processed natural language query
 type ProcessedQuery struct {
-	ID            string
-	SessionID     string
-	UserID        string
-	
+	ID        string
+	SessionID string
+	UserID    string
+
 	// Query details
-	RawQuery      string
-	ProcessedAt   time.Time
-	Language      string
-	
+	RawQuery    string
+	ProcessedAt time.Time
+	Language    string
+
 	// NLP analysis
-	Intent        QueryIntent
-	Entities      []Entity
-	Confidence    float64
-	
+	Intent     QueryIntent
+	Entities   []Entity
+	Confidence float64
+
 	// Response
-	Response      *QueryResponse
-	ResponseTime  time.Duration
-	
+	Response     *QueryResponse
+	ResponseTime time.Duration
+
 	// Metadata
-	Context       map[string]interface{}
-	Feedback      *QueryFeedback
+	Context  map[string]interface{}
+	Feedback *QueryFeedback
 }
 
 // QueryIntent represents the intent of a natural language query
 type QueryIntent struct {
-	Type        IntentType
-	Action      string
-	Target      string
-	Timeframe   *TimeRange
-	Filters     map[string]interface{}
-	Confidence  float64
+	Type       IntentType
+	Action     string
+	Target     string
+	Timeframe  *TimeRange
+	Filters    map[string]interface{}
+	Confidence float64
 }
 
 // IntentType represents different types of query intents
@@ -167,15 +167,15 @@ type TimeRange struct {
 // QueryResponse represents the response to a natural language query
 type QueryResponse struct {
 	// Response content
-	Text          string
-	Data          interface{}
+	Text           string
+	Data           interface{}
 	Visualizations []Visualization
-	
+
 	// Metadata
-	Confidence    float64
-	Sources       []string
-	Reasoning     []ReasoningStep
-	
+	Confidence float64
+	Sources    []string
+	Reasoning  []ReasoningStep
+
 	// Actions
 	SuggestedActions []SuggestedAction
 	RelatedQueries   []string
@@ -183,10 +183,10 @@ type QueryResponse struct {
 
 // Visualization represents a data visualization
 type Visualization struct {
-	Type        string // "chart", "table", "graph", "timeline"
-	Title       string
-	Data        interface{}
-	Config      map[string]interface{}
+	Type   string // "chart", "table", "graph", "timeline"
+	Title  string
+	Data   interface{}
+	Config map[string]interface{}
 }
 
 // ReasoningStep represents a step in the reasoning process
@@ -207,33 +207,33 @@ type SuggestedAction struct {
 
 // QueryFeedback represents user feedback on a query response
 type QueryFeedback struct {
-	Helpful     bool
-	Rating      int // 1-5 scale
-	Comment     string
-	Timestamp   time.Time
+	Helpful   bool
+	Rating    int // 1-5 scale
+	Comment   string
+	Timestamp time.Time
 }
 
 // NLMetrics tracks natural language interface metrics
 type NLMetrics struct {
 	// Query metrics
-	TotalQueries      int64
-	SuccessfulQueries int64
-	FailedQueries     int64
+	TotalQueries        int64
+	SuccessfulQueries   int64
+	FailedQueries       int64
 	AverageResponseTime time.Duration
-	
+
 	// Intent metrics
 	IntentAccuracy    float64
 	EntityAccuracy    float64
 	OverallConfidence float64
-	
+
 	// User metrics
-	ActiveSessions    int64
-	UniqueUsers       int64
+	ActiveSessions       int64
+	UniqueUsers          int64
 	AverageSessionLength time.Duration
-	
+
 	// Popular queries
-	TopQueries        []QueryStats
-	TopIntents        []IntentStats
+	TopQueries []QueryStats
+	TopIntents []IntentStats
 }
 
 // QueryStats represents statistics for a query
@@ -259,19 +259,19 @@ type QueryParser struct {
 
 // QueryTemplate represents a query template
 type QueryTemplate struct {
-	Pattern     string
-	Intent      IntentType
-	Entities    []EntityType
-	Example     string
-	Confidence  float64
+	Pattern    string
+	Intent     IntentType
+	Entities   []EntityType
+	Example    string
+	Confidence float64
 }
 
 // QueryPattern represents a query pattern
 type QueryPattern struct {
-	Regex       string
-	Intent      IntentType
-	Extractor   func(string) []Entity
-	Confidence  float64
+	Regex      string
+	Intent     IntentType
+	Extractor  func(string) []Entity
+	Confidence float64
 }
 
 // IntentClassifier classifies query intents
@@ -284,7 +284,7 @@ type IntentClassifier struct {
 
 // EntityExtractor extracts entities from queries
 type EntityExtractor struct {
-	config    *NLConfig
+	config     *NLConfig
 	extractors map[EntityType]*EntityExtractorFunc
 	patterns   map[EntityType][]string
 }
@@ -298,17 +298,17 @@ type EntityExtractorFunc struct {
 
 // ResponseGenerator generates natural language responses
 type ResponseGenerator struct {
-	config     *NLConfig
-	templates  map[IntentType]*ResponseTemplate
-	formatter  *ResponseFormatter
+	config    *NLConfig
+	templates map[IntentType]*ResponseTemplate
+	formatter *ResponseFormatter
 }
 
 // ResponseTemplate represents a response template
 type ResponseTemplate struct {
-	Template    string
-	Variables   []string
-	Examples    []string
-	Confidence  float64
+	Template   string
+	Variables  []string
+	Examples   []string
+	Confidence float64
 }
 
 // ResponseFormatter formats responses
@@ -318,9 +318,9 @@ type ResponseFormatter struct {
 
 // FormatSpec represents a format specification
 type FormatSpec struct {
-	Type        string
-	Template    string
-	Processor   func(interface{}) string
+	Type      string
+	Template  string
+	Processor func(interface{}) string
 }
 
 // NewNLQueryInterface creates a new natural language query interface
@@ -328,25 +328,25 @@ func NewNLQueryInterface(config *NLConfig, explainability *explainability.Engine
 	if config == nil {
 		config = DefaultNLConfig()
 	}
-	
+
 	parser := &QueryParser{
 		config:    config,
 		templates: make(map[string]*QueryTemplate),
 		patterns:  make(map[string]*QueryPattern),
 	}
-	
+
 	intentClassifier := &IntentClassifier{
 		config:     config,
 		intents:    make(map[string]IntentType),
 		confidence: make(map[string]float64),
 	}
-	
+
 	entityExtractor := &EntityExtractor{
 		config:     config,
 		extractors: make(map[EntityType]*EntityExtractorFunc),
 		patterns:   make(map[EntityType][]string),
 	}
-	
+
 	responseGenerator := &ResponseGenerator{
 		config:    config,
 		templates: make(map[IntentType]*ResponseTemplate),
@@ -354,13 +354,13 @@ func NewNLQueryInterface(config *NLConfig, explainability *explainability.Engine
 			formats: make(map[string]*FormatSpec),
 		},
 	}
-	
+
 	// Initialize with default templates and patterns
 	parser.initializeDefaults()
 	intentClassifier.initializeDefaults()
 	entityExtractor.initializeDefaults()
 	responseGenerator.initializeDefaults()
-	
+
 	return &NLQueryInterface{
 		config:            config,
 		explainability:    explainability,
@@ -403,29 +403,29 @@ func DefaultNLConfig() *NLConfig {
 func (nl *NLQueryInterface) ProcessQuery(ctx context.Context, sessionID, userID, query string) (*QueryResponse, error) {
 	nl.mutex.Lock()
 	defer nl.mutex.Unlock()
-	
+
 	startTime := time.Now()
-	
+
 	// Validate query
 	if err := nl.validateQuery(query); err != nil {
 		return nil, fmt.Errorf("invalid query: %v", err)
 	}
-	
+
 	// Get or create session
 	session := nl.getOrCreateSession(sessionID, userID)
-	
+
 	// Parse query
 	intent, entities, confidence, err := nl.parseQuery(ctx, query, session)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse query: %v", err)
 	}
-	
+
 	// Process based on intent
 	response, err := nl.processIntent(ctx, intent, entities, session)
 	if err != nil {
 		return nil, fmt.Errorf("failed to process intent: %v", err)
 	}
-	
+
 	// Create processed query record
 	processedQuery := ProcessedQuery{
 		ID:           generateQueryID(),
@@ -441,20 +441,20 @@ func (nl *NLQueryInterface) ProcessQuery(ctx context.Context, sessionID, userID,
 		ResponseTime: time.Since(startTime),
 		Context:      make(map[string]interface{}),
 	}
-	
+
 	// Store in history
 	nl.queryHistory = append(nl.queryHistory, processedQuery)
 	session.QueryHistory = append(session.QueryHistory, processedQuery)
 	session.LastActivity = time.Now()
-	
+
 	// Update metrics
 	nl.updateMetrics(&processedQuery)
-	
+
 	// Audit if required
 	if nl.config.AuditQueries {
 		nl.auditQuery(&processedQuery)
 	}
-	
+
 	return response, nil
 }
 
@@ -486,7 +486,7 @@ func (nl *NLQueryInterface) processExplainIntent(ctx context.Context, intent *Qu
 	var traceID string
 	var agentID string
 	var timeRange *TimeRange
-	
+
 	for _, entity := range entities {
 		switch entity.Type {
 		case EntityAgent:
@@ -496,11 +496,11 @@ func (nl *NLQueryInterface) processExplainIntent(ctx context.Context, intent *Qu
 			timeRange = parseTimeRange(entity.Value)
 		}
 	}
-	
+
 	// Query explainability engine
 	var explanations []explainability.Explanation
 	var err error
-	
+
 	if traceID != "" {
 		// Get explanation for specific trace
 		explanation, err := nl.explainability.GetExplanation(ctx, traceID)
@@ -515,7 +515,7 @@ func (nl *NLQueryInterface) processExplainIntent(ctx context.Context, intent *Qu
 			return nil, fmt.Errorf("failed to get agent explanations: %v", err)
 		}
 	}
-	
+
 	// Generate response
 	response := &QueryResponse{
 		Text:       nl.generateExplanationText(explanations, intent.Action),
@@ -524,15 +524,15 @@ func (nl *NLQueryInterface) processExplainIntent(ctx context.Context, intent *Qu
 		Sources:    []string{"explainability_engine"},
 		Reasoning:  nl.generateReasoningSteps(explanations),
 	}
-	
+
 	// Add visualizations
 	if len(explanations) > 0 {
 		response.Visualizations = nl.generateExplanationVisualizations(explanations)
 	}
-	
+
 	// Add suggested actions
 	response.SuggestedActions = nl.generateSuggestedActions(intent, entities)
-	
+
 	return response, nil
 }
 
@@ -541,8 +541,8 @@ func (nl *NLQueryInterface) processQueryIntent(ctx context.Context, intent *Quer
 	// Extract query parameters
 	var namespace string
 	var key string
-	var timeRange *TimeRange
-	
+	// Removed unused timeRange variable
+
 	for _, entity := range entities {
 		switch entity.Type {
 		case EntityResource:
@@ -552,14 +552,15 @@ func (nl *NLQueryInterface) processQueryIntent(ctx context.Context, intent *Quer
 				key = entity.Value
 			}
 		case EntityTime:
-			timeRange = parseTimeRange(entity.Value)
+			// Parse but don't store timeRange since it's not used
+			_ = parseTimeRange(entity.Value)
 		}
 	}
-	
+
 	// Query memory manager
 	var data interface{}
-	var err error
-	
+	// Removed unused err declaration - now using inline err handling
+
 	if namespace != "" && key != "" {
 		// Get specific context data
 		contextData, err := nl.memory.Read(ctx, namespace, key, 0)
@@ -575,7 +576,7 @@ func (nl *NLQueryInterface) processQueryIntent(ctx context.Context, intent *Quer
 		}
 		data = namespaceInfo
 	}
-	
+
 	// Generate response
 	response := &QueryResponse{
 		Text:       nl.generateQueryText(data, intent.Action),
@@ -583,10 +584,10 @@ func (nl *NLQueryInterface) processQueryIntent(ctx context.Context, intent *Quer
 		Confidence: intent.Confidence,
 		Sources:    []string{"memory_manager"},
 	}
-	
+
 	// Add visualizations
 	response.Visualizations = nl.generateDataVisualizations(data)
-	
+
 	return response, nil
 }
 
@@ -656,7 +657,7 @@ func (nl *NLQueryInterface) processHelpIntent(ctx context.Context, intent *Query
 - "Monitor Agent-D performance"
 
 You can ask questions in natural language, and I'll do my best to understand and provide helpful responses.`
-	
+
 	return &QueryResponse{
 		Text:       helpText,
 		Confidence: 1.0,
@@ -670,18 +671,18 @@ func (nl *NLQueryInterface) validateQuery(query string) error {
 	if len(query) == 0 {
 		return fmt.Errorf("empty query")
 	}
-	
+
 	if len(query) > nl.config.MaxQueryLength {
 		return fmt.Errorf("query too long: %d > %d", len(query), nl.config.MaxQueryLength)
 	}
-	
+
 	// Check blocked queries
 	for _, blocked := range nl.config.BlockedQueries {
 		if strings.Contains(strings.ToLower(query), strings.ToLower(blocked)) {
 			return fmt.Errorf("query contains blocked content")
 		}
 	}
-	
+
 	return nil
 }
 
@@ -690,7 +691,7 @@ func (nl *NLQueryInterface) getOrCreateSession(sessionID, userID string) *QueryS
 		session.LastActivity = time.Now()
 		return session
 	}
-	
+
 	session := &QuerySession{
 		SessionID:    sessionID,
 		UserID:       userID,
@@ -702,7 +703,7 @@ func (nl *NLQueryInterface) getOrCreateSession(sessionID, userID string) *QueryS
 		DetailLevel:  "detailed",
 		OutputFormat: "text",
 	}
-	
+
 	nl.sessionContext[sessionID] = session
 	return session
 }
@@ -710,10 +711,10 @@ func (nl *NLQueryInterface) getOrCreateSession(sessionID, userID string) *QueryS
 func (nl *NLQueryInterface) parseQuery(ctx context.Context, query string, session *QuerySession) (*QueryIntent, []Entity, float64, error) {
 	// Classify intent
 	intent, confidence := nl.intentClassifier.classifyIntent(query)
-	
+
 	// Extract entities
 	entities := nl.entityExtractor.extractEntities(query)
-	
+
 	// Create query intent
 	queryIntent := &QueryIntent{
 		Type:       intent,
@@ -722,7 +723,7 @@ func (nl *NLQueryInterface) parseQuery(ctx context.Context, query string, sessio
 		Confidence: confidence,
 		Filters:    make(map[string]interface{}),
 	}
-	
+
 	return queryIntent, entities, confidence, nil
 }
 
@@ -730,16 +731,16 @@ func (nl *NLQueryInterface) generateExplanationText(explanations []explainabilit
 	if len(explanations) == 0 {
 		return "No explanations found for your query."
 	}
-	
+
 	var text strings.Builder
-	
+
 	if len(explanations) == 1 {
 		exp := explanations[0]
 		text.WriteString(fmt.Sprintf("Here's what happened:\n\n"))
-		text.WriteString(fmt.Sprintf("**Decision:** %s\n", exp.Decision))
-		text.WriteString(fmt.Sprintf("**Reasoning:** %s\n", exp.Reasoning))
-		text.WriteString(fmt.Sprintf("**Timestamp:** %s\n", exp.Timestamp.Format(time.RFC3339)))
-		
+		text.WriteString(fmt.Sprintf("**Decision:** %s\n", exp.Explanation))                  // Changed from exp.Decision
+		text.WriteString(fmt.Sprintf("**Reasoning:** %v\n", exp.ReasoningChain))              // Changed from exp.Reasoning
+		text.WriteString(fmt.Sprintf("**Timestamp:** %s\n", time.Now().Format(time.RFC3339))) // Changed to use current time
+
 		if len(exp.Evidence) > 0 {
 			text.WriteString("\n**Evidence:**\n")
 			for _, evidence := range exp.Evidence {
@@ -749,12 +750,12 @@ func (nl *NLQueryInterface) generateExplanationText(explanations []explainabilit
 	} else {
 		text.WriteString(fmt.Sprintf("Found %d explanations:\n\n", len(explanations)))
 		for i, exp := range explanations {
-			text.WriteString(fmt.Sprintf("**%d. %s**\n", i+1, exp.Decision))
-			text.WriteString(fmt.Sprintf("   %s\n", exp.Reasoning))
-			text.WriteString(fmt.Sprintf("   %s\n\n", exp.Timestamp.Format(time.RFC3339)))
+			text.WriteString(fmt.Sprintf("**%d. %s**\n", i+1, exp.Explanation))         // Changed from exp.Decision
+			text.WriteString(fmt.Sprintf("   %v\n", exp.ReasoningChain))                // Changed from exp.Reasoning
+			text.WriteString(fmt.Sprintf("   %s\n\n", time.Now().Format(time.RFC3339))) // Changed to use current time
 		}
 	}
-	
+
 	return text.String()
 }
 
@@ -765,17 +766,25 @@ func (nl *NLQueryInterface) generateQueryText(data interface{}, action string) s
 
 func (nl *NLQueryInterface) generateReasoningSteps(explanations []explainability.Explanation) []ReasoningStep {
 	var steps []ReasoningStep
-	
+
 	for i, exp := range explanations {
+		// Convert ReasoningChain ([]string) to a single description
+		var description string
+		if len(exp.ReasoningChain) > 0 {
+			description = strings.Join(exp.ReasoningChain, " -> ")
+		} else {
+			description = exp.Explanation
+		}
+
 		step := ReasoningStep{
 			Step:        i + 1,
-			Description: exp.Reasoning,
+			Description: description, // Changed from exp.Reasoning
 			Data:        exp.Evidence,
 			Confidence:  0.9, // TODO: Calculate actual confidence
 		}
 		steps = append(steps, step)
 	}
-	
+
 	return steps
 }
 
@@ -796,13 +805,13 @@ func (nl *NLQueryInterface) generateSuggestedActions(intent *QueryIntent, entiti
 
 func (nl *NLQueryInterface) updateMetrics(query *ProcessedQuery) {
 	nl.metrics.TotalQueries++
-	
+
 	if query.Response != nil {
 		nl.metrics.SuccessfulQueries++
 	} else {
 		nl.metrics.FailedQueries++
 	}
-	
+
 	// Update average response time
 	totalTime := time.Duration(nl.metrics.TotalQueries) * nl.metrics.AverageResponseTime
 	totalTime += query.ResponseTime
@@ -824,7 +833,7 @@ func (qp *QueryParser) initializeDefaults() {
 		Example:    "Why did you throttle Agent-B last night?",
 		Confidence: 0.9,
 	}
-	
+
 	qp.templates["query"] = &QueryTemplate{
 		Pattern:    "show.*|list.*|get.*",
 		Intent:     IntentQuery,
@@ -852,7 +861,7 @@ func (ee *EntityExtractor) initializeDefaults() {
 		"Agent-[A-Z]",
 		"agent [a-zA-Z0-9-]+",
 	}
-	
+
 	ee.patterns[EntityTime] = []string{
 		"last night",
 		"yesterday",
@@ -869,7 +878,7 @@ func (rg *ResponseGenerator) initializeDefaults() {
 		Variables:  []string{"explanation"},
 		Confidence: 0.9,
 	}
-	
+
 	rg.templates[IntentQuery] = &ResponseTemplate{
 		Template:   "Here's the data you requested: {{.data}}",
 		Variables:  []string{"data"},
@@ -879,38 +888,38 @@ func (rg *ResponseGenerator) initializeDefaults() {
 
 func (ic *IntentClassifier) classifyIntent(query string) (IntentType, float64) {
 	query = strings.ToLower(query)
-	
+
 	// Simple keyword-based classification
 	if strings.Contains(query, "why") || strings.Contains(query, "explain") {
 		return IntentExplain, 0.9
 	}
-	
+
 	if strings.Contains(query, "show") || strings.Contains(query, "list") || strings.Contains(query, "get") {
 		return IntentQuery, 0.8
 	}
-	
+
 	if strings.Contains(query, "analyze") {
 		return IntentAnalyze, 0.8
 	}
-	
+
 	if strings.Contains(query, "troubleshoot") || strings.Contains(query, "debug") {
 		return IntentTroubleshoot, 0.8
 	}
-	
+
 	if strings.Contains(query, "monitor") || strings.Contains(query, "watch") {
 		return IntentMonitor, 0.8
 	}
-	
+
 	if strings.Contains(query, "help") {
 		return IntentHelp, 0.9
 	}
-	
+
 	return IntentUnknown, 0.1
 }
 
 func (ee *EntityExtractor) extractEntities(query string) []Entity {
 	var entities []Entity
-	
+
 	// Simple pattern-based extraction
 	if strings.Contains(query, "Agent-") {
 		// Extract agent names
@@ -921,7 +930,7 @@ func (ee *EntityExtractor) extractEntities(query string) []Entity {
 			Confidence: 0.9,
 		})
 	}
-	
+
 	if strings.Contains(query, "last night") || strings.Contains(query, "yesterday") {
 		entities = append(entities, Entity{
 			Type:       EntityTime,
@@ -929,7 +938,7 @@ func (ee *EntityExtractor) extractEntities(query string) []Entity {
 			Confidence: 0.9,
 		})
 	}
-	
+
 	return entities
 }
 
@@ -1004,4 +1013,4 @@ func (t EntityType) String() string {
 	default:
 		return "unknown"
 	}
-} 
+}

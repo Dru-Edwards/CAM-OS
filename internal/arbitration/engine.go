@@ -3,6 +3,7 @@ package arbitration
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/cam-os/kernel/internal/policy"
@@ -57,6 +58,14 @@ type Engine struct {
 	scheduler       *scheduler.TripleHelixScheduler
 	policyEngine    *policy.Engine
 	securityManager *security.Manager
+	
+	// Task and agent tracking
+	mu              sync.RWMutex
+	activeTasks     map[string]*Task
+	taskHistory     map[string]*Task
+	rollbacks       map[string]*TaskRollback
+	agents          map[string]*Agent
+	capabilityIndex map[string][]string // capability -> []agentID
 }
 
 // NewEngine creates a new arbitration engine
@@ -66,6 +75,11 @@ func NewEngine(config *Config) *Engine {
 		scheduler:       config.Scheduler,
 		policyEngine:    config.PolicyEngine,
 		securityManager: config.SecurityManager,
+		activeTasks:     make(map[string]*Task),
+		taskHistory:     make(map[string]*Task),
+		rollbacks:       make(map[string]*TaskRollback),
+		agents:          make(map[string]*Agent),
+		capabilityIndex: make(map[string][]string),
 	}
 }
 
@@ -135,6 +149,20 @@ func (e *Engine) CommitTask(ctx context.Context, task *Task, agentID string) (st
 	// 4. Start task monitoring
 	
 	return commitID, nil
+}
+
+// RollbackTask rolls back a previously committed task
+func (e *Engine) RollbackTask(ctx context.Context, taskID string, reason string) error {
+	// This method is not implemented in the original file,
+	// so it will return an error as per the new_code.
+	return fmt.Errorf("RollbackTask not implemented")
+}
+
+// RegisterAgent registers a new agent with the arbitration engine
+func (e *Engine) RegisterAgent(ctx context.Context, agentID string, capabilities []string, metadata map[string]string) error {
+	// This method is not implemented in the original file,
+	// so it will return an error as per the new_code.
+	return fmt.Errorf("RegisterAgent not implemented")
 }
 
 // HealthCheck performs health check on the arbitration engine
