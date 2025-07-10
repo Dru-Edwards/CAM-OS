@@ -1,0 +1,448 @@
+# CAM-OS Production Deployment Configuration
+# Leverages existing infrastructure with cognitive arbitration enhancements
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cam-production
+  labels:
+    environment: production
+    app: cam-os
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cam-production-config
+  namespace: cam-production
+data:
+  config.yaml: |
+    # CAM-OS Production Configuration
+    server:
+      port: 8080
+      grpc_port: 9090
+      health_port: 8081
+      metrics_port: 9091
+      
+    # Cognitive Arbitration Configuration
+    arbitration:
+      cognitive_enabled: true
+      performance_learning_enabled: true
+      confidence_threshold: 0.75
+      max_concurrent_tasks: 1000
+      
+    # Performance Optimization
+    performance:
+      target_latency: "500µs"  # Sub-millisecond target
+      target_throughput: 10000.0  # 10K requests/second
+      enable_auto_tuning: true
+      tuning_interval: "5m"
+      
+      # Caching configuration
+      decision_cache_size: 10000
+      agent_cache_size: 5000
+      cache_ttl: "5m"
+      
+      # Parallel processing
+      worker_pool_size: 100
+      batch_size: 50
+      max_concurrency: 500
+      
+    # Triple-Helix Scheduler Configuration
+    scheduler:
+      max_concurrent_tasks: 1000
+      priority_dimensions:
+        - urgency
+        - importance
+        - efficiency
+        - energy
+        - trust
+      preemption_enabled: true
+      max_retries: 3
+      retry_delay: "1s"
+      task_timeout: "30s"
+      
+      # Priority weights (optimized for production)
+      priority_weights:
+        urgency: 0.35
+        importance: 0.30
+        efficiency: 0.20
+        energy: 0.10
+        trust: 0.05
+    
+    # Integration Configuration
+    integration:
+      refresh_interval: "30s"
+      cache_expiry: "5m"
+      retry_attempts: 3
+      timeout_duration: "10s"
+      enable_real_time_sync: true
+      
+    # Security Configuration
+    security:
+      post_quantum_enabled: true
+      tls_enabled: true
+      tpm_enabled: true
+      trust_envelope_enabled: true
+      
+    # Policy Engine Configuration
+    policy:
+      default_policy: "allow"
+      audit_enabled: true
+      cache_enabled: true
+      
+    # Memory Management
+    memory:
+      backend: "redis"
+      redis:
+        address: "redis-master.cam-production.svc.cluster.local:6379"
+        password: "${REDIS_PASSWORD}"
+        db: 0
+        max_retries: 3
+        pool_size: 100
+        
+    # Observability
+    observability:
+      tracing_enabled: true
+      metrics_enabled: true
+      logging_level: "info"
+      explainability_enabled: true
+      
+    # External Data Sources
+    data_sources:
+      - name: "primary-api"
+        type: "rest"
+        base_url: "${PRIMARY_API_URL}"
+        api_key: "${PRIMARY_API_KEY}"
+        endpoints:
+          agents: "/api/v1/agents"
+          tasks: "/api/v1/tasks"
+        rate_limit: 1000
+        
+      - name: "agent-registry"
+        type: "database"
+        connection_string: "${AGENT_DB_CONNECTION}"
+        tables:
+          agents: "agents"
+          tasks: "tasks"
+        query_timeout: "5s"
+        
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cam-kernel
+  namespace: cam-production
+  labels:
+    app: cam-kernel
+    version: v2.1.0
+    component: core
+spec:
+  replicas: 5  # High availability
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: cam-kernel
+  template:
+    metadata:
+      labels:
+        app: cam-kernel
+        version: v2.1.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: cam-kernel
+      containers:
+      - name: cam-kernel
+        image: cam-os/kernel:v2.1.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        - containerPort: 9090
+          name: grpc
+          protocol: TCP
+        - containerPort: 8081
+          name: health
+          protocol: TCP
+        - containerPort: 9091
+          name: metrics
+          protocol: TCP
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/cam/config.yaml"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: password
+        - name: PRIMARY_API_URL
+          valueFrom:
+            secretKeyRef:
+              name: api-secrets
+              key: primary-url
+        - name: PRIMARY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-secrets
+              key: primary-key
+        - name: AGENT_DB_CONNECTION
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: agent-connection
+        volumeMounts:
+        - name: config
+          mountPath: /etc/cam
+          readOnly: true
+        - name: tpm-device
+          mountPath: /dev/tpm0
+        - name: certs
+          mountPath: /etc/ssl/certs/cam
+          readOnly: true
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        startupProbe:
+          httpGet:
+            path: /startup
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+      volumes:
+      - name: config
+        configMap:
+          name: cam-production-config
+      - name: tpm-device
+        hostPath:
+          path: /dev/tpm0
+          type: CharDevice
+      - name: certs
+        secret:
+          secretName: cam-tls-certs
+      nodeSelector:
+        kubernetes.io/arch: amd64
+        cam-os/tpm-enabled: "true"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - cam-kernel
+              topologyKey: kubernetes.io/hostname
+      tolerations:
+      - key: "cam-os/production"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cam-kernel-service
+  namespace: cam-production
+  labels:
+    app: cam-kernel
+spec:
+  type: ClusterIP
+  selector:
+    app: cam-kernel
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+  - name: grpc
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+  - name: metrics
+    port: 9091
+    targetPort: 9091
+    protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cam-kernel-ingress
+  namespace: cam-production
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "1000"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+spec:
+  tls:
+  - hosts:
+    - api.cam-os.prod
+    secretName: cam-api-tls
+  rules:
+  - host: api.cam-os.prod
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: cam-kernel-service
+            port:
+              number: 9090
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: cam-kernel-hpa
+  namespace: cam-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cam-kernel
+  minReplicas: 5
+  maxReplicas: 50
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Pods
+    pods:
+      metric:
+        name: arbitration_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "500"  # Scale up if > 500 RPS per pod
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      - type: Pods
+        value: 5
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: cam-kernel-pdb
+  namespace: cam-production
+spec:
+  minAvailable: 3
+  selector:
+    matchLabels:
+      app: cam-kernel
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cam-kernel-metrics
+  namespace: cam-production
+  labels:
+    app: cam-kernel
+spec:
+  selector:
+    matchLabels:
+      app: cam-kernel
+  endpoints:
+  - port: metrics
+    interval: 15s
+    path: /metrics
+    honorLabels: true
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cam-kernel-network-policy
+  namespace: cam-production
+spec:
+  podSelector:
+    matchLabels:
+      app: cam-kernel
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: cam-production
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 9090
+    - protocol: TCP
+      port: 8081
+    - protocol: TCP
+      port: 9091
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: cam-production
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80 
