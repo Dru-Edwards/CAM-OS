@@ -2,337 +2,180 @@ package syscall
 
 import (
 	"context"
-	"fmt"
-	"strings"
-	"sync"
+	"crypto/rand"
+	"encoding/hex"
+	"log"
+	"os"
 	"time"
 
+	"github.com/cam-os/kernel/internal/security"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/peer"
-	"google.golang.org/grpc/status"
 )
 
-// AuthMiddleware handles authentication and authorization
-type AuthMiddleware struct {
-	requireMTLS  bool
-	trustedCAs   []string
-	jwtValidator JWTValidator
-	policyEngine PolicyEngine
+// MiddlewareConfig holds configuration for syscall middleware
+type MiddlewareConfig struct {
+	// Security interceptor configuration
+	SecurityInterceptor *security.InterceptorConfig
+
+	// JWT configuration
+	JWTSigningKey []byte
+
+	// Audit configuration
+	AuditEnabled bool
+	AuditLogger  *log.Logger
+
+	// Performance configuration
+	EnableMetrics bool
+	MetricsLogger *log.Logger
 }
 
-// RateLimiter implements token bucket rate limiting per client
-type RateLimiter struct {
-	buckets    map[string]*TokenBucket
-	mu         sync.RWMutex
-	maxRate    int
-	burstSize  int
-	cleanupTTL time.Duration
-}
+// DefaultMiddlewareConfig returns a secure default middleware configuration
+func DefaultMiddlewareConfig() *MiddlewareConfig {
+	// Generate a random JWT signing key (in production, this should be loaded from secure storage)
+	signingKey := make([]byte, 32)
+	rand.Read(signingKey)
 
-// TokenBucket represents a token bucket for rate limiting
-type TokenBucket struct {
-	tokens     int
-	maxTokens  int
-	lastRefill time.Time
-	refillRate time.Duration
-}
-
-// JWTValidator interface for JWT token validation
-type JWTValidator interface {
-	ValidateToken(ctx context.Context, token string) (*Claims, error)
-}
-
-// PolicyEngine interface for authorization decisions
-type PolicyEngine interface {
-	Authorize(ctx context.Context, subject string, action string, resource string) (bool, error)
-}
-
-// Claims represents JWT claims
-type Claims struct {
-	Subject     string            `json:"sub"`
-	Issuer      string            `json:"iss"`
-	Audience    string            `json:"aud"`
-	ExpiresAt   int64             `json:"exp"`
-	IssuedAt    int64             `json:"iat"`
-	Permissions []string          `json:"permissions"`
-	Metadata    map[string]string `json:"metadata"`
-}
-
-// NewAuthMiddleware creates a new authentication middleware
-func NewAuthMiddleware(requireMTLS bool, trustedCAs []string, jwtValidator JWTValidator, policyEngine PolicyEngine) *AuthMiddleware {
-	return &AuthMiddleware{
-		requireMTLS:  requireMTLS,
-		trustedCAs:   trustedCAs,
-		jwtValidator: jwtValidator,
-		policyEngine: policyEngine,
+	return &MiddlewareConfig{
+		SecurityInterceptor: security.DefaultInterceptorConfig(),
+		JWTSigningKey:       signingKey,
+		AuditEnabled:        true,
+		AuditLogger:         log.New(os.Stdout, "[AUDIT] ", log.LstdFlags|log.Lmicroseconds),
+		EnableMetrics:       true,
+		MetricsLogger:       log.New(os.Stdout, "[METRICS] ", log.LstdFlags),
 	}
 }
 
-// NewRateLimiter creates a new rate limiter
-func NewRateLimiter(maxRate, burstSize int) *RateLimiter {
-	return &RateLimiter{
-		buckets:    make(map[string]*TokenBucket),
-		maxRate:    maxRate,
-		burstSize:  burstSize,
-		cleanupTTL: 10 * time.Minute,
+// SetupSecurityMiddleware sets up the security interceptor chain for gRPC server
+func SetupSecurityMiddleware(config *MiddlewareConfig) (grpc.UnaryServerInterceptor, error) {
+	if config == nil {
+		config = DefaultMiddlewareConfig()
 	}
-}
 
-// UnaryInterceptor returns a gRPC unary interceptor for auth and rate limiting
-func (am *AuthMiddleware) UnaryInterceptor(rateLimiter *RateLimiter) grpc.UnaryServerInterceptor {
+	// Create audit logger function
+	auditLogger := func(format string, args ...interface{}) {
+		if config.AuditEnabled && config.AuditLogger != nil {
+			config.AuditLogger.Printf(format, args...)
+		}
+	}
+
+	// Create security interceptor
+	securityInterceptor, err := security.NewSecurityInterceptor(
+		config.SecurityInterceptor,
+		config.JWTSigningKey,
+		auditLogger,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create combined interceptor chain
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		// Step 1: Extract client identity
-		clientID, err := am.extractClientIdentity(ctx)
+		// Security chain: mTLS → JWT → OPA → token-bucket
+		return securityInterceptor.UnaryInterceptor(ctx, req, info, func(ctx context.Context, req interface{}) (interface{}, error) {
+			// Add performance metrics
+			if config.EnableMetrics {
+				start := time.Now()
+				resp, err := handler(ctx, req)
+				latency := time.Since(start)
+
+				if config.MetricsLogger != nil {
+					config.MetricsLogger.Printf("method=%s latency=%v success=%v",
+						info.FullMethod, latency, err == nil)
+				}
+
+				return resp, err
+			}
+
+			return handler(ctx, req)
+		})
+	}, nil
+}
+
+// LoadSecurityConfig loads security configuration from environment or config file
+func LoadSecurityConfig() (*MiddlewareConfig, error) {
+	config := DefaultMiddlewareConfig()
+
+	// Override with environment variables if present
+	if jwtKey := os.Getenv("CAM_OS_JWT_SIGNING_KEY"); jwtKey != "" {
+		key, err := hex.DecodeString(jwtKey)
 		if err != nil {
-			return nil, status.Error(codes.Unauthenticated, "failed to extract client identity")
+			return nil, err
 		}
+		config.JWTSigningKey = key
+	}
 
-		// Step 2: Rate limiting check
-		if !rateLimiter.Allow(clientID) {
-			return nil, status.Error(codes.ResourceExhausted, "rate limit exceeded")
+	// Configure security interceptor based on environment
+	if os.Getenv("CAM_OS_DISABLE_MTLS") == "true" {
+		config.SecurityInterceptor.RequireMTLS = false
+	}
+
+	if os.Getenv("CAM_OS_DISABLE_JWT") == "true" {
+		config.SecurityInterceptor.JWTEnabled = false
+	}
+
+	if os.Getenv("CAM_OS_DISABLE_OPA") == "true" {
+		config.SecurityInterceptor.OPAEnabled = false
+	}
+
+	if os.Getenv("CAM_OS_DISABLE_RATE_LIMIT") == "true" {
+		config.SecurityInterceptor.RateLimitEnabled = false
+	}
+
+	// Override OPA endpoint if specified
+	if opaEndpoint := os.Getenv("CAM_OS_OPA_ENDPOINT"); opaEndpoint != "" {
+		config.SecurityInterceptor.OPAEndpoint = opaEndpoint
+	}
+
+	return config, nil
+}
+
+// ValidationMiddleware provides additional validation for syscall requests
+func ValidationMiddleware(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	// Add request validation here if needed
+	// This runs after the security interceptor chain
+
+	return handler(ctx, req)
+}
+
+// RecoveryMiddleware provides panic recovery for syscall handlers
+func RecoveryMiddleware(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Panic recovered in %s: %v", info.FullMethod, r)
 		}
+	}()
 
-		// Step 3: mTLS validation (if required)
-		if am.requireMTLS {
-			if err := am.validateMTLS(ctx); err != nil {
-				return nil, status.Error(codes.Unauthenticated, "mTLS validation failed")
+	return handler(ctx, req)
+}
+
+// ChainInterceptors chains multiple unary interceptors together
+func ChainInterceptors(interceptors ...grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		// Build the chain from right to left
+		for i := len(interceptors) - 1; i >= 0; i-- {
+			interceptor := interceptors[i]
+			h := handler
+			handler = func(ctx context.Context, req interface{}) (interface{}, error) {
+				return interceptor(ctx, req, info, h)
 			}
 		}
 
-		// Step 4: JWT validation
-		claims, err := am.validateJWT(ctx)
-		if err != nil {
-			return nil, status.Error(codes.Unauthenticated, "JWT validation failed")
-		}
-
-		// Step 5: Authorization check
-		if err := am.authorize(ctx, claims, info.FullMethod); err != nil {
-			return nil, status.Error(codes.PermissionDenied, "authorization failed")
-		}
-
-		// Step 6: Add claims to context
-		ctx = context.WithValue(ctx, "claims", claims)
-		ctx = context.WithValue(ctx, "client_id", clientID)
-
-		// Call the handler
 		return handler(ctx, req)
 	}
 }
 
-// extractClientIdentity extracts client identity from the context
-func (am *AuthMiddleware) extractClientIdentity(ctx context.Context) (string, error) {
-	// Try to get from peer info (mTLS certificate)
-	if peer, ok := peer.FromContext(ctx); ok {
-		if tlsInfo, ok := peer.AuthInfo.(credentials.TLSInfo); ok {
-			if len(tlsInfo.State.PeerCertificates) > 0 {
-				cert := tlsInfo.State.PeerCertificates[0]
-				return cert.Subject.CommonName, nil
-			}
-		}
-	}
-
-	// Try to get from metadata (API key or client ID)
-	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		if clientIDs := md.Get("client-id"); len(clientIDs) > 0 {
-			return clientIDs[0], nil
-		}
-	}
-
-	return "", fmt.Errorf("no client identity found")
-}
-
-// validateMTLS validates mutual TLS connection
-func (am *AuthMiddleware) validateMTLS(ctx context.Context) error {
-	peer, ok := peer.FromContext(ctx)
-	if !ok {
-		return fmt.Errorf("no peer info")
-	}
-
-	tlsInfo, ok := peer.AuthInfo.(credentials.TLSInfo)
-	if !ok {
-		return fmt.Errorf("no TLS info")
-	}
-
-	// Check if client certificate is present
-	if len(tlsInfo.State.PeerCertificates) == 0 {
-		return fmt.Errorf("no client certificate")
-	}
-
-	// Validate certificate chain
-	cert := tlsInfo.State.PeerCertificates[0]
-
-	// Check certificate validity
-	now := time.Now()
-	if now.Before(cert.NotBefore) || now.After(cert.NotAfter) {
-		return fmt.Errorf("certificate expired or not yet valid")
-	}
-
-	// Additional certificate validation logic can be added here
-	// e.g., checking against trusted CAs, CRL, OCSP, etc.
-
-	return nil
-}
-
-// validateJWT validates JWT token from metadata
-func (am *AuthMiddleware) validateJWT(ctx context.Context) (*Claims, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return nil, fmt.Errorf("no metadata")
-	}
-
-	authHeaders := md.Get("authorization")
-	if len(authHeaders) == 0 {
-		return nil, fmt.Errorf("no authorization header")
-	}
-
-	token := authHeaders[0]
-	if len(token) > 7 && token[:7] == "Bearer " {
-		token = token[7:]
-	}
-
-	return am.jwtValidator.ValidateToken(ctx, token)
-}
-
-// authorize checks if the client is authorized to perform the action
-func (am *AuthMiddleware) authorize(ctx context.Context, claims *Claims, method string) error {
-	// Extract action and resource from method
-	action, resource := parseGRPCMethod(method)
-
-	// Check authorization
-	allowed, err := am.policyEngine.Authorize(ctx, claims.Subject, action, resource)
+// CreateSecureMiddlewareChain creates a complete secure middleware chain
+func CreateSecureMiddlewareChain(config *MiddlewareConfig) (grpc.UnaryServerInterceptor, error) {
+	// Setup security interceptor
+	securityInterceptor, err := SetupSecurityMiddleware(config)
 	if err != nil {
-		return fmt.Errorf("authorization check failed: %w", err)
+		return nil, err
 	}
 
-	if !allowed {
-		return fmt.Errorf("access denied for %s on %s", action, resource)
-	}
-
-	return nil
-}
-
-// Allow checks if a client is allowed to make a request (rate limiting)
-func (rl *RateLimiter) Allow(clientID string) bool {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	bucket, exists := rl.buckets[clientID]
-	if !exists {
-		bucket = &TokenBucket{
-			tokens:     rl.burstSize,
-			maxTokens:  rl.burstSize,
-			lastRefill: time.Now(),
-			refillRate: time.Second / time.Duration(rl.maxRate),
-		}
-		rl.buckets[clientID] = bucket
-	}
-
-	// Refill tokens
-	now := time.Now()
-	tokensToAdd := int(now.Sub(bucket.lastRefill) / bucket.refillRate)
-	if tokensToAdd > 0 {
-		bucket.tokens = min(bucket.maxTokens, bucket.tokens+tokensToAdd)
-		bucket.lastRefill = now
-	}
-
-	// Check if request is allowed
-	if bucket.tokens > 0 {
-		bucket.tokens--
-		return true
-	}
-
-	return false
-}
-
-// Cleanup removes old token buckets to prevent memory leaks
-func (rl *RateLimiter) Cleanup() {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	cutoff := time.Now().Add(-rl.cleanupTTL)
-	for clientID, bucket := range rl.buckets {
-		if bucket.lastRefill.Before(cutoff) {
-			delete(rl.buckets, clientID)
-		}
-	}
-}
-
-// StartCleanupRoutine starts a background goroutine to clean up old buckets
-func (rl *RateLimiter) StartCleanupRoutine() {
-	go func() {
-		ticker := time.NewTicker(rl.cleanupTTL)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			rl.Cleanup()
-		}
-	}()
-}
-
-// parseGRPCMethod extracts action and resource from gRPC method name
-func parseGRPCMethod(method string) (action, resource string) {
-	// Example: "/cam.SyscallService/Arbitrate" -> action: "arbitrate", resource: "tasks"
-
-	// Extract method name from full path
-	if len(method) > 0 && method[0] == '/' {
-		parts := strings.Split(method[1:], "/")
-		if len(parts) == 2 {
-			methodName := strings.ToLower(parts[1])
-
-			// Map methods to actions and resources
-			methodMap := map[string][2]string{
-				"arbitrate":              {"arbitrate", "tasks"},
-				"committask":             {"commit", "tasks"},
-				"taskrollback":           {"rollback", "tasks"},
-				"agentregister":          {"register", "agents"},
-				"querypolicy":            {"query", "policies"},
-				"policyupdate":           {"update", "policies"},
-				"contextread":            {"read", "context"},
-				"contextwrite":           {"write", "context"},
-				"contextsnapshot":        {"snapshot", "context"},
-				"contextrestore":         {"restore", "context"},
-				"tmpsign":                {"sign", "security"},
-				"verifymanifest":         {"verify", "security"},
-				"establishsecurechannel": {"establish", "security"},
-				"explainaction":          {"explain", "observability"},
-				"emittrace":              {"emit", "observability"},
-				"emitmetric":             {"emit", "observability"},
-				"systemtuning":           {"tune", "system"},
-				"healthcheck":            {"check", "health"},
-			}
-
-			if mapping, exists := methodMap[methodName]; exists {
-				return mapping[0], mapping[1]
-			}
-		}
-	}
-
-	return "unknown", "unknown"
-}
-
-// Helper function for min
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-// GetClientID extracts client ID from context (utility function)
-func GetClientID(ctx context.Context) string {
-	if clientID, ok := ctx.Value("client_id").(string); ok {
-		return clientID
-	}
-	return "unknown"
-}
-
-// GetClaims extracts JWT claims from context (utility function)
-func GetClaims(ctx context.Context) *Claims {
-	if claims, ok := ctx.Value("claims").(*Claims); ok {
-		return claims
-	}
-	return nil
+	// Create the complete chain: Recovery → Security → Validation
+	return ChainInterceptors(
+		RecoveryMiddleware,
+		securityInterceptor,
+		ValidationMiddleware,
+	), nil
 }

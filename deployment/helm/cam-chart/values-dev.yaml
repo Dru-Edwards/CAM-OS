@@ -5,7 +5,7 @@ replicaCount: 1
 
 image:
   repository: cam/complete-arbitration-mesh
-  tag: "dev"
+  tag: "1.0.0-dev"  # H-8: PINNED - Development version tag
   pullPolicy: Always
 
 # Disable autoscaling for development
@@ -97,36 +97,38 @@ redis:
 # Development security (less strict)
 security:
   jwt:
+    algorithm: "HS256"
     secret: "dev-jwt-secret-not-for-production"
+    expiresIn: "24h"
   encryption:
     key: "dev-encryption-key-32-chars-long"
   signing:
-    key: "dev-signing-key-not-for-production"
+    key: "dev-signing-key-change-in-production"
+  rateLimit:
+    windowMs: 15000
+    max: 1000  # Higher limit for development
 
-# Disable RBAC restrictions for easier development
-rbac:
-  createNamespaceRole: false
+# Development init job
+initJob:
+  enabled: true
+  image:
+    repository: cam/init
+    tag: "1.0.0-dev"  # H-8: PINNED - Development version
+    pullPolicy: Always
 
-# Enable all integrations for testing
-integrations:
-  openai:
-    enabled: true
-    apiKey: "sk-test-key"
-  anthropic:
-    enabled: true
-    apiKey: "test-key"
-
-# Enable testing
+# Development testing configuration
 tests:
   enabled: true
+  timeout: "300"
+  image:
+    repository: curlimages/curl
+    tag: "8.5.0"  # H-8: PINNED - Specific curl version
+    pullPolicy: IfNotPresent
 
-# gRPC enabled for testing
-grpc:
-  enabled: true
-  ingress:
-    enabled: true
-    hosts:
-      - host: grpc-dev.local
-        paths:
-          - path: /
-            pathType: Prefix
+# Development backup configuration (using dev-specific version)
+backupCronJob:
+  enabled: false  # Disabled for development
+  image:
+    repository: postgres
+    tag: "15.6-alpine"  # H-8: PINNED - Specific PostgreSQL version
+    pullPolicy: IfNotPresent

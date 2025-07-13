@@ -12,7 +12,7 @@ replicaCount: 3
 # Image configuration
 image:
   repository: cam/complete-arbitration-mesh
-  tag: ""  # Defaults to chart appVersion
+  tag: "1.0.0"  # H-8: PINNED - Update only after thorough testing
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
@@ -359,7 +359,7 @@ initJob:
   enabled: true
   image:
     repository: cam/init
-    tag: "latest"
+    tag: "1.0.0"  # H-8: PINNED - Matches main application version
     pullPolicy: IfNotPresent
   command: ["/bin/sh"]
   args: ["-c", "echo 'Running initialization...' && npm run db:migrate"]
@@ -394,7 +394,7 @@ backupCronJob:
   successfulJobsHistoryLimit: 3
   image:
     repository: postgres
-    tag: "15-alpine"
+    tag: "15.6-alpine"  # H-8: PINNED - Specific PostgreSQL version
     pullPolicy: IfNotPresent
   command: ["/bin/sh"]
   args:
@@ -432,7 +432,7 @@ tests:
   timeout: "300"
   image:
     repository: curlimages/curl
-    tag: "8.4.0"
+    tag: "8.5.0"  # H-8: PINNED - Specific curl version
     pullPolicy: IfNotPresent
   env: {}
   resources:

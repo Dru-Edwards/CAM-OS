@@ -2,41 +2,139 @@ package handlers
 
 import (
 	"context"
+	"fmt"
+	"time"
+
+	"github.com/cam-os/kernel/internal/arbitration"
+	"github.com/cam-os/kernel/internal/explainability"
+	"github.com/cam-os/kernel/internal/memory"
+	"github.com/cam-os/kernel/internal/policy"
+	"github.com/cam-os/kernel/internal/security"
 	pb "github.com/cam-os/kernel/proto/generated"
 )
 
-// CoreHandler handles core arbitration and task management syscalls
+// HandlerConfig represents the configuration for handlers
+type HandlerConfig struct {
+	SyscallTimeout     time.Duration
+	ArbitrationTimeout time.Duration
+	RedactErrorDetails bool
+	EnableValidation   bool // H-10: Enable protobuf validation
+	StrictValidation   bool // H-10: Enable strict validation mode
+}
+
+// CoreHandler handles core system operations
 type CoreHandler interface {
 	Arbitrate(ctx context.Context, req *pb.ArbitrateRequest) (*pb.ArbitrateResponse, error)
-	CommitTask(ctx context.Context, req *pb.CommitTaskRequest) (*pb.CommitTaskResponse, error)
-	TaskRollback(ctx context.Context, req *pb.TaskRollbackRequest) (*pb.TaskRollbackResponse, error)
-	AgentRegister(ctx context.Context, req *pb.AgentRegisterRequest) (*pb.AgentRegisterResponse, error)
-	QueryPolicy(ctx context.Context, req *pb.QueryPolicyRequest) (*pb.QueryPolicyResponse, error)
-	PolicyUpdate(ctx context.Context, req *pb.PolicyUpdateRequest) (*pb.PolicyUpdateResponse, error)
 	HealthCheck(ctx context.Context, req *pb.HealthCheckRequest) (*pb.HealthCheckResponse, error)
 }
 
-// MemoryHandler handles context and memory management syscalls
+// MemoryHandler handles memory operations
 type MemoryHandler interface {
 	ContextRead(ctx context.Context, req *pb.ContextReadRequest) (*pb.ContextReadResponse, error)
 	ContextWrite(ctx context.Context, req *pb.ContextWriteRequest) (*pb.ContextWriteResponse, error)
-	ContextSnapshot(ctx context.Context, req *pb.ContextSnapshotRequest) (*pb.ContextSnapshotResponse, error)
-	ContextRestore(ctx context.Context, req *pb.ContextRestoreRequest) (*pb.ContextRestoreResponse, error)
-	SnapshotContext(ctx context.Context, req *pb.SnapshotContextRequest) (*pb.SnapshotContextResponse, error)
-	ContextVersionList(ctx context.Context, req *pb.ContextVersionListRequest) (*pb.ContextVersionListResponse, error)
 }
 
-// SecurityHandler handles security and cryptographic syscalls
+// SecurityHandler handles security operations
 type SecurityHandler interface {
 	TmpSign(ctx context.Context, req *pb.TmpSignRequest) (*pb.TmpSignResponse, error)
 	VerifyManifest(ctx context.Context, req *pb.VerifyManifestRequest) (*pb.VerifyManifestResponse, error)
 	EstablishSecureChannel(ctx context.Context, req *pb.EstablishSecureChannelRequest) (*pb.EstablishSecureChannelResponse, error)
 }
 
-// ObservabilityHandler handles monitoring, tracing, and explainability syscalls
+// ObservabilityHandler handles observability operations
 type ObservabilityHandler interface {
-	ExplainAction(ctx context.Context, req *pb.ExplainActionRequest) (*pb.ExplainActionResponse, error)
 	EmitTrace(ctx context.Context, req *pb.EmitTraceRequest) (*pb.EmitTraceResponse, error)
 	EmitMetric(ctx context.Context, req *pb.EmitMetricRequest) (*pb.EmitMetricResponse, error)
-	SystemTuning(ctx context.Context, req *pb.SystemTuningRequest) (*pb.SystemTuningResponse, error)
-} 
+}
+
+// HandlerDependencies contains all dependencies for handlers
+type HandlerDependencies struct {
+	ArbitrationEngine    *arbitration.Engine
+	MemoryManager        *memory.ContextManager
+	PolicyEngine         *policy.Engine
+	SecurityManager      *security.Manager
+	ExplainabilityEngine *explainability.Engine
+	Config               *HandlerConfig
+	ErrorRedactor        *ErrorRedactor // Updated to use ErrorRedactor
+}
+
+// NewHandlerDependencies creates a new handler dependencies struct
+func NewHandlerDependencies(
+	arbitrationEngine *arbitration.Engine,
+	memoryManager *memory.ContextManager,
+	policyEngine *policy.Engine,
+	securityManager *security.Manager,
+	explainabilityEngine *explainability.Engine,
+	config *HandlerConfig,
+	errorRedactor *ErrorRedactor, // Updated to use ErrorRedactor
+) *HandlerDependencies {
+	return &HandlerDependencies{
+		ArbitrationEngine:    arbitrationEngine,
+		MemoryManager:        memoryManager,
+		PolicyEngine:         policyEngine,
+		SecurityManager:      securityManager,
+		ExplainabilityEngine: explainabilityEngine,
+		Config:               config,
+		ErrorRedactor:        errorRedactor,
+	}
+}
+
+// ValidateRequest validates a protobuf request if validation is enabled
+func (hd *HandlerDependencies) ValidateRequest(req interface{}) error {
+	if !hd.Config.EnableValidation {
+		return nil
+	}
+
+	// Simplified validation - just check for nil
+	if req == nil {
+		return &ValidationError{
+			Field:   "request",
+			Message: "request cannot be nil",
+		}
+	}
+
+	return nil
+}
+
+// ValidationError represents a validation error
+type ValidationError struct {
+	Field   string
+	Message string
+}
+
+func (e *ValidationError) Error() string {
+	return fmt.Sprintf("validation error on field %s: %s", e.Field, e.Message)
+}
+
+// ValidateTmpCertificateChain validates TPM certificate chain field
+func (hd *HandlerDependencies) ValidateTmpCertificateChain(chain *pb.TpmCertificateChain) *ValidationResult {
+	result := &ValidationResult{
+		Valid:   true,
+		Errors:  []string{},
+		Context: make(map[string]interface{}),
+	}
+
+	if chain == nil {
+		return result // nil is valid (optional field)
+	}
+
+	// Basic validation
+	if chain.KeyId == "" {
+		result.Valid = false
+		result.Errors = append(result.Errors, "key_id cannot be empty")
+	}
+
+	if len(chain.CertificateChain) == 0 {
+		result.Valid = false
+		result.Errors = append(result.Errors, "certificate_chain cannot be empty")
+	}
+
+	return result
+}
+
+// ValidationResult represents the result of validation
+type ValidationResult struct {
+	Valid   bool
+	Errors  []string
+	Context map[string]interface{}
+}

@@ -1,126 +1,337 @@
 package syscall
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log"
+	"os"
+	"regexp"
 	"strings"
+	"time"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// ValidationError represents input validation errors
-type ValidationError struct {
-	Message string
+// ErrorRedactionConfig configures how errors are redacted
+type ErrorRedactionConfig struct {
+	// Enable complete error redaction (production mode)
+	RedactAllErrors bool
+	
+	// Enable detailed error logging for debugging
+	LogDetailedErrors bool
+	
+	// Error correlation ID generation
+	GenerateCorrelationID bool
+	
+	// Patterns to redact from error messages
+	RedactionPatterns []string
+	
+	// Audit logger for security events
+	AuditLogger *log.Logger
 }
 
-func (e *ValidationError) Error() string {
-	return e.Message
-}
-
-// NewValidationError creates a new validation error
-func NewValidationError(format string, args ...interface{}) *ValidationError {
-	return &ValidationError{
-		Message: fmt.Sprintf(format, args...),
+// DefaultErrorRedactionConfig returns a secure default configuration
+func DefaultErrorRedactionConfig() *ErrorRedactionConfig {
+	return &ErrorRedactionConfig{
+		RedactAllErrors:       true,
+		LogDetailedErrors:     true,
+		GenerateCorrelationID: true,
+		RedactionPatterns: []string{
+			// Redact file paths
+			`[A-Za-z]:[\\\/][^\\\/\s]+`,
+			// Redact IP addresses
+			`\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b`,
+			// Redact ports
+			`:[0-9]{1,5}\b`,
+			// Redact connection strings
+			`[a-zA-Z]+://[^\s]+`,
+			// Redact stack traces
+			`at\s+[a-zA-Z0-9_.]+\([^)]+\)`,
+			// Redact SQL queries
+			`SELECT\s+.+\s+FROM\s+.+`,
+			`INSERT\s+INTO\s+.+`,
+			`UPDATE\s+.+\s+SET\s+.+`,
+			`DELETE\s+FROM\s+.+`,
+		},
+		AuditLogger: log.New(os.Stdout, "[ERROR_AUDIT] ", log.LstdFlags|log.Lmicroseconds),
 	}
 }
 
-// ErrorSanitizer handles secure error responses
-type ErrorSanitizer struct {
-	redactDetails bool
-	auditLogger   *log.Logger
+// ErrorRedactor handles error redaction and mapping
+type ErrorRedactor struct {
+	config            *ErrorRedactionConfig
+	redactionPatterns []*regexp.Regexp
+	errorCounter      map[string]int
+	auditLogger       *log.Logger
 }
 
-// NewErrorSanitizer creates a new error sanitizer
-func NewErrorSanitizer(redactDetails bool, auditLogger *log.Logger) *ErrorSanitizer {
-	return &ErrorSanitizer{
-		redactDetails: redactDetails,
-		auditLogger:   auditLogger,
+// NewErrorRedactor creates a new error redactor
+func NewErrorRedactor(config *ErrorRedactionConfig) *ErrorRedactor {
+	if config == nil {
+		config = DefaultErrorRedactionConfig()
 	}
-}
-
-// SanitizeError converts internal errors to safe public errors
-func (es *ErrorSanitizer) SanitizeError(err error, operation string, callerID string) (codes.Code, string) {
-	if err == nil {
-		return codes.OK, ""
+	
+	// Compile redaction patterns
+	patterns := make([]*regexp.Regexp, len(config.RedactionPatterns))
+	for i, pattern := range config.RedactionPatterns {
+		patterns[i] = regexp.MustCompile(pattern)
 	}
-
-	// Log full error details for internal debugging
-	if es.auditLogger != nil {
-		es.auditLogger.Printf("[ERROR] Operation=%s CallerID=%s Error=%v", operation, callerID, err)
-	}
-
-	// Handle specific error types
-	switch e := err.(type) {
-	case *ValidationError:
-		return codes.InvalidArgument, e.Message
-
-	default:
-		// For unknown errors, check if it's a known safe pattern
-		errMsg := err.Error()
-		
-		// Safe error patterns that can be returned as-is
-		safePatterns := []string{
-			"not found",
-			"already exists",
-			"permission denied",
-			"invalid format",
-			"timeout exceeded",
-			"quota exceeded",
-			"service unavailable",
-		}
-		
-		for _, pattern := range safePatterns {
-			if strings.Contains(strings.ToLower(errMsg), pattern) {
-				return codes.Internal, errMsg
-			}
-		}
-		
-		// If redaction is enabled, return generic error
-		if es.redactDetails {
-			return codes.Internal, "internal server error"
-		}
-		
-		// Otherwise return the original error (for development)
-		return codes.Internal, errMsg
+	
+	return &ErrorRedactor{
+		config:            config,
+		redactionPatterns: patterns,
+		errorCounter:      make(map[string]int),
+		auditLogger:       config.AuditLogger,
 	}
 }
 
-// MapToGRPCStatus converts an error to a gRPC status
-func (es *ErrorSanitizer) MapToGRPCStatus(err error, operation string, callerID string) error {
+// RedactError redacts an error and returns a safe external message with gRPC status
+func (r *ErrorRedactor) RedactError(ctx context.Context, err error, operation string, userID string) error {
 	if err == nil {
 		return nil
 	}
-
-	code, message := es.SanitizeError(err, operation, callerID)
-	return status.Error(code, message)
+	
+	// Generate correlation ID for tracking
+	correlationID := ""
+	if r.config.GenerateCorrelationID {
+		correlationID = r.generateCorrelationID(operation, userID)
+	}
+	
+	// Get original error details
+	originalError := err.Error()
+	
+	// Map internal error to gRPC status code
+	grpcCode := r.mapErrorToGRPCCode(err)
+	
+	// Generate safe external message
+	externalMessage := r.generateSafeMessage(grpcCode, correlationID)
+	
+	// Log detailed error for debugging (internal only)
+	if r.config.LogDetailedErrors {
+		r.auditLogger.Printf("Error redacted - correlation_id: %s, operation: %s, user_id: %s, grpc_code: %s, internal_error: %s", 
+			correlationID, operation, userID, grpcCode.String(), originalError)
+	}
+	
+	// Track error frequency
+	r.trackErrorFrequency(grpcCode.String())
+	
+	// Apply additional redaction patterns
+	if !r.config.RedactAllErrors {
+		externalMessage = r.applyRedactionPatterns(originalError)
+	}
+	
+	// Create gRPC status error
+	return status.Error(grpcCode, externalMessage)
 }
 
-// Common error constructors for consistent error handling
-func NewTimeoutError(operation string) error {
-	return fmt.Errorf("timeout exceeded for operation: %s", operation)
+// mapErrorToGRPCCode maps internal errors to appropriate gRPC status codes
+func (r *ErrorRedactor) mapErrorToGRPCCode(err error) codes.Code {
+	errorStr := strings.ToLower(err.Error())
+	
+	switch {
+	// Authentication errors
+	case strings.Contains(errorStr, "unauthorized") || strings.Contains(errorStr, "authentication"):
+		return codes.Unauthenticated
+	
+	// Authorization errors
+	case strings.Contains(errorStr, "forbidden") || strings.Contains(errorStr, "permission denied"):
+		return codes.PermissionDenied
+	
+	// Validation errors
+	case strings.Contains(errorStr, "invalid") || strings.Contains(errorStr, "validation"):
+		return codes.InvalidArgument
+	
+	// Not found errors
+	case strings.Contains(errorStr, "not found") || strings.Contains(errorStr, "does not exist"):
+		return codes.NotFound
+	
+	// Already exists errors
+	case strings.Contains(errorStr, "already exists") || strings.Contains(errorStr, "duplicate"):
+		return codes.AlreadyExists
+	
+	// Resource exhaustion
+	case strings.Contains(errorStr, "rate limit") || strings.Contains(errorStr, "quota"):
+		return codes.ResourceExhausted
+	
+	// Timeout errors
+	case strings.Contains(errorStr, "timeout") || strings.Contains(errorStr, "deadline"):
+		return codes.DeadlineExceeded
+	
+	// Service unavailable
+	case strings.Contains(errorStr, "unavailable") || strings.Contains(errorStr, "connection"):
+		return codes.Unavailable
+	
+	// Precondition failures
+	case strings.Contains(errorStr, "precondition") || strings.Contains(errorStr, "conflict"):
+		return codes.FailedPrecondition
+	
+	// Out of range errors
+	case strings.Contains(errorStr, "out of range") || strings.Contains(errorStr, "bounds"):
+		return codes.OutOfRange
+	
+	// Unimplemented features
+	case strings.Contains(errorStr, "not implemented") || strings.Contains(errorStr, "unsupported"):
+		return codes.Unimplemented
+	
+	// Data corruption
+	case strings.Contains(errorStr, "corrupted") || strings.Contains(errorStr, "checksum"):
+		return codes.DataLoss
+	
+	// Default to internal error
+	default:
+		return codes.Internal
+	}
 }
 
-func NewNotFoundError(resource string, id string) error {
-	return fmt.Errorf("%s not found: %s", resource, id)
+// generateSafeMessage generates a safe external error message
+func (r *ErrorRedactor) generateSafeMessage(code codes.Code, correlationID string) string {
+	base := ""
+	
+	switch code {
+	case codes.Unauthenticated:
+		base = "Authentication required"
+	case codes.PermissionDenied:
+		base = "Access denied"
+	case codes.InvalidArgument:
+		base = "Invalid request parameters"
+	case codes.NotFound:
+		base = "Resource not found"
+	case codes.AlreadyExists:
+		base = "Resource already exists"
+	case codes.ResourceExhausted:
+		base = "Rate limit exceeded"
+	case codes.DeadlineExceeded:
+		base = "Request timeout"
+	case codes.Unavailable:
+		base = "Service temporarily unavailable"
+	case codes.FailedPrecondition:
+		base = "Precondition failed"
+	case codes.OutOfRange:
+		base = "Value out of range"
+	case codes.Unimplemented:
+		base = "Feature not implemented"
+	case codes.DataLoss:
+		base = "Data integrity error"
+	default:
+		base = "Internal server error"
+	}
+	
+	if correlationID != "" {
+		return fmt.Sprintf("%s (correlation_id: %s)", base, correlationID)
+	}
+	
+	return base
 }
 
-func NewAlreadyExistsError(resource string, id string) error {
-	return fmt.Errorf("%s already exists: %s", resource, id)
+// applyRedactionPatterns applies redaction patterns to error message
+func (r *ErrorRedactor) applyRedactionPatterns(message string) string {
+	redacted := message
+	
+	for _, pattern := range r.redactionPatterns {
+		redacted = pattern.ReplaceAllString(redacted, "[REDACTED]")
+	}
+	
+	return redacted
 }
 
-func NewQuotaExceededError(resource string, limit interface{}) error {
-	return fmt.Errorf("quota exceeded for %s: limit %v", resource, limit)
+// generateCorrelationID generates a unique correlation ID for error tracking
+func (r *ErrorRedactor) generateCorrelationID(operation, userID string) string {
+	timestamp := time.Now().UnixNano()
+	data := fmt.Sprintf("%s:%s:%d", operation, userID, timestamp)
+	hash := sha256.Sum256([]byte(data))
+	return hex.EncodeToString(hash[:])[:16] // First 16 characters
 }
 
-func NewPermissionDeniedError(operation string, resource string) error {
-	return fmt.Errorf("permission denied for %s on %s", operation, resource)
+// trackErrorFrequency tracks error frequency for monitoring
+func (r *ErrorRedactor) trackErrorFrequency(errorType string) {
+	if r.errorCounter == nil {
+		r.errorCounter = make(map[string]int)
+	}
+	r.errorCounter[errorType]++
 }
 
-func NewInvalidFormatError(field string, expected string) error {
-	return fmt.Errorf("invalid format for %s: expected %s", field, expected)
+// GetErrorStats returns error statistics
+func (r *ErrorRedactor) GetErrorStats() map[string]int {
+	return r.errorCounter
 }
 
-func NewServiceUnavailableError(service string) error {
-	return fmt.Errorf("service unavailable: %s", service)
+// SecurityAuditError logs security-related errors
+func (r *ErrorRedactor) SecurityAuditError(ctx context.Context, operation, userID, clientIP, reason string) {
+	if r.auditLogger != nil {
+		r.auditLogger.Printf("SECURITY_VIOLATION - operation: %s, user_id: %s, client_ip: %s, reason: %s", 
+			operation, userID, clientIP, reason)
+	}
+}
+
+// IsRedactedError checks if an error has been redacted
+func IsRedactedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	
+	return strings.Contains(err.Error(), "correlation_id:")
+}
+
+// ExtractCorrelationID extracts correlation ID from a redacted error
+func ExtractCorrelationID(err error) string {
+	if err == nil {
+		return ""
+	}
+	
+	message := err.Error()
+	pattern := regexp.MustCompile(`correlation_id:\s*([a-f0-9]+)`)
+	matches := pattern.FindStringSubmatch(message)
+	
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	
+	return ""
+}
+
+// Predefined error types for common scenarios
+var (
+	ErrAuthenticationRequired = status.Error(codes.Unauthenticated, "Authentication required")
+	ErrAccessDenied          = status.Error(codes.PermissionDenied, "Access denied")
+	ErrInvalidRequest        = status.Error(codes.InvalidArgument, "Invalid request parameters")
+	ErrResourceNotFound      = status.Error(codes.NotFound, "Resource not found")
+	ErrResourceExists        = status.Error(codes.AlreadyExists, "Resource already exists")
+	ErrRateLimitExceeded     = status.Error(codes.ResourceExhausted, "Rate limit exceeded")
+	ErrRequestTimeout        = status.Error(codes.DeadlineExceeded, "Request timeout")
+	ErrServiceUnavailable    = status.Error(codes.Unavailable, "Service temporarily unavailable")
+	ErrPreconditionFailed    = status.Error(codes.FailedPrecondition, "Precondition failed")
+	ErrValueOutOfRange       = status.Error(codes.OutOfRange, "Value out of range")
+	ErrNotImplemented        = status.Error(codes.Unimplemented, "Feature not implemented")
+	ErrDataIntegrity         = status.Error(codes.DataLoss, "Data integrity error")
+	ErrInternalServer        = status.Error(codes.Internal, "Internal server error")
+)
+
+// ErrorRedactionMiddleware provides gRPC middleware for error redaction
+func ErrorRedactionMiddleware(redactor *ErrorRedactor) func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		// Extract user ID from context (if available)
+		userID := ExtractUserIDFromContext(ctx)
+		
+		// Call the handler
+		resp, err := handler(ctx, req)
+		
+		// Redact error if present
+		if err != nil {
+			err = redactor.RedactError(ctx, err, info.FullMethod, userID)
+		}
+		
+		return resp, err
+	}
+}
+
+// ExtractUserIDFromContext extracts user ID from gRPC context
+func ExtractUserIDFromContext(ctx context.Context) string {
+	// This would typically extract from JWT claims or metadata
+	// For now, return empty string if not available
+	return ""
+} 
 } 

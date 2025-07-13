@@ -43,19 +43,12 @@ jobs:
 
     - name: Install Go tools
       run: |
-        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31.0
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
         go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
     - name: Download dependencies
       run: go mod download
-
-    - name: Generate protobuf
-      run: |
-        cd proto
-        protoc --go_out=generated --go-grpc_out=generated \
-          --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative \
-          syscall.proto
 
     - name: Format check
       run: |
@@ -68,20 +61,10 @@ jobs:
     - name: Lint
       run: golangci-lint run ./... --timeout=5m
 
-    - name: Check Proto Drift
+    - name: Proto Drift Guard (H-7)
       run: |
-        echo "🔍 Checking for proto drift..."
-        cd proto
-        protoc --go_out=generated --go-grpc_out=generated \
-          --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative \
-          syscall.proto
-        if ! git diff --quiet; then
-          echo "❌ Proto files are out of sync with generated code"
-          echo "Run 'cd proto && protoc --go_out=generated --go-grpc_out=generated --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative syscall.proto' and commit the changes"
-          git diff
-          exit 1
-        fi
-        echo "✅ Proto files are in sync"
+        echo "🔍 H-7: Checking for proto drift using make target..."
+        make proto-drift-check
 
     - name: Security Scan
       run: |
@@ -129,18 +112,14 @@ jobs:
 
     - name: Install Go tools
       run: |
-        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31.0
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
 
     - name: Download dependencies
       run: go mod download
 
     - name: Generate protobuf
-      run: |
-        cd proto
-        protoc --go_out=generated --go-grpc_out=generated \
-          --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative \
-          syscall.proto
+      run: make proto
 
     - name: Run unit tests
       run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
@@ -194,18 +173,14 @@ jobs:
 
     - name: Install Go tools
       run: |
-        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31.0
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
 
     - name: Download dependencies
       run: go mod download
 
     - name: Generate protobuf
-      run: |
-        cd proto
-        protoc --go_out=generated --go-grpc_out=generated \
-          --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative \
-          syscall.proto
+      run: make proto
 
     - name: Run integration tests
       run: |
@@ -256,18 +231,14 @@ jobs:
 
     - name: Install Go tools
       run: |
-        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31.0
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
 
     - name: Download dependencies
       run: go mod download
 
     - name: Generate protobuf
-      run: |
-        cd proto
-        protoc --go_out=generated --go-grpc_out=generated \
-          --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative \
-          syscall.proto
+      run: make proto
 
     - name: Build binary
       run: |

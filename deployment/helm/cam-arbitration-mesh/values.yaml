@@ -13,7 +13,7 @@ app:
   image:
     registry: docker.io
     repository: cam/arbitration-mesh
-    tag: "latest"
+    tag: "1.0.0"  # H-8: PINNED - Update only after thorough testing
     pullPolicy: IfNotPresent
     pullSecrets: []
   
@@ -95,7 +95,7 @@ app:
     initialDelaySeconds: 5
     periodSeconds: 5
     timeoutSeconds: 3
-    failureThreshold: 2
+    failureThreshold: 3
     successThreshold: 1
   
   # Startup probe
@@ -139,29 +139,38 @@ service:
   type: ClusterIP
   port: 80
   targetPort: 3000
+  nodePort: ""
   annotations: {}
+  loadBalancerIP: ""
+  loadBalancerSourceRanges: []
+
+# ServiceMonitor for Prometheus
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
   labels: {}
+  annotations: {}
+  path: /metrics
+  port: http
 
 # Ingress configuration
 ingress:
   enabled: true
-  className: nginx
+  className: "nginx"
   annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    nginx.ingress.kubernetes.io/rate-limit: "100"
-    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
   hosts:
-    - host: api.cam-arbitration.com
+    - host: cam.example.com
       paths:
         - path: /
           pathType: Prefix
   tls:
-    - secretName: cam-tls-secret
+    - secretName: cam-tls
       hosts:
-        - api.cam-arbitration.com
+        - cam.example.com
 
 # PostgreSQL configuration
 postgresql:
@@ -275,30 +284,8 @@ secrets:
 
 # ConfigMap configuration
 configMap:
-  create: true
-  data:
-    app.yaml: |
-      server:
-        port: 3000
-        host: "0.0.0.0"
-      logging:
-        level: info
-        format: json
-      metrics:
-        enabled: true
-        port: 3000
-        path: /metrics
-      health:
-        enabled: true
-        path: /health
-      consensus:
-        algorithm: raft
-        timeout: 30000
-        heartbeat_interval: 5000
-      arbitration:
-        max_concurrent_cases: 100
-        timeout: 300000
-        evidence_retention_days: 365
+  enabled: true
+  data: {}
 
 # Service Account
 serviceAccount:
@@ -310,6 +297,10 @@ serviceAccount:
 # RBAC configuration
 rbac:
   create: true
+  createCRDPermissions: false
+  createNamespaceRole: true
+  meshCoordination:
+    enabled: true
   rules:
     - apiGroups: [""]
       resources: ["configmaps", "secrets"]
@@ -317,36 +308,15 @@ rbac:
 
 # Network Policy
 networkPolicy:
-  enabled: true
-  policyTypes:
-    - Ingress
-    - Egress
+  enabled: false
   ingress:
-    - from:
-      - namespaceSelector:
-          matchLabels:
-            name: nginx-ingress
-      - podSelector:
-          matchLabels:
-            app.kubernetes.io/name: nginx-ingress
-      ports:
-      - protocol: TCP
-        port: 3000
+    enabled: true
+    ingressNamespace: "ingress-nginx"
+    monitoringNamespace: "monitoring"
+    rules: []
   egress:
-    - to: []
-      ports:
-      - protocol: TCP
-        port: 5432  # PostgreSQL
-      - protocol: TCP
-        port: 6379  # Redis
-      - protocol: TCP
-        port: 53    # DNS
-      - protocol: UDP
-        port: 53    # DNS
-      - protocol: TCP
-        port: 443   # HTTPS
-      - protocol: TCP
-        port: 80    # HTTP
+    enabled: true
+    rules: []
 
 # Monitoring configuration
 monitoring:
@@ -406,15 +376,12 @@ monitoring:
 # Backup configuration
 backup:
   enabled: true
-  schedule: "0 2 * * *"  # Daily at 2 AM
-  retention: "30d"
-  storage:
-    type: s3
-    bucket: ""
-    region: ""
-    accessKey: ""
-    secretKey: ""
-    existingSecret: ""
+  schedule: "0 2 * * *"
+  size: 50Gi
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  annotations: {}
 
 # Migration jobs
 migration:
@@ -422,7 +389,7 @@ migration:
   image:
     registry: docker.io
     repository: cam/arbitration-mesh
-    tag: "latest"
+    tag: "1.0.0"  # H-8: PINNED - Matches main application version
     pullPolicy: IfNotPresent
   resources:
     limits:
@@ -442,7 +409,7 @@ initContainers:
     image:
       registry: docker.io
       repository: postgres
-      tag: "14-alpine"
+      tag: "15.6-alpine"  # H-8: PINNED - Specific PostgreSQL version
       pullPolicy: IfNotPresent
     resources:
       limits:
@@ -457,7 +424,7 @@ initContainers:
     image:
       registry: docker.io
       repository: redis
-      tag: "7-alpine"
+      tag: "7.2.4-alpine"  # H-8: PINNED - Specific Redis version
       pullPolicy: IfNotPresent
     resources:
       limits:
