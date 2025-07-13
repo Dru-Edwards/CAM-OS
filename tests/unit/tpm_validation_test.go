@@ -26,7 +26,7 @@ func TestTPMCertificateChainValidation(t *testing.T) {
 		// Create valid certificate chain
 		leafCert := createValidLeafCert(t, rootCert, rootKey)
 		chain := &pb.TmpCertificateChain{
-			KeyId:            "81000001", // Valid TPM key handle
+			KeyId:            "TEST0001", // Generic test TPM key handle
 			CertificateChain: [][]byte{leafCert.Raw},
 			AttestationData:  createValidAttestationData(t, "81000001"),
 			Algorithm:        "RSA-PSS",
@@ -54,7 +54,7 @@ func TestTPMCertificateChainValidation(t *testing.T) {
 		{
 			name: "Empty certificate chain",
 			chain: &pb.TmpCertificateChain{
-				KeyId:            "81000001",
+				KeyId:            "TEST0001",
 				CertificateChain: [][]byte{},
 				AttestationData:  createValidAttestationData(t, "81000001"),
 				Algorithm:        "RSA-PSS",
@@ -90,7 +90,7 @@ func TestTPMCertificateChainValidation(t *testing.T) {
 		{
 			name: "Invalid algorithm",
 			chain: &pb.TmpCertificateChain{
-				KeyId:            "81000001",
+				KeyId:            "TEST0001",
 				CertificateChain: [][]byte{createValidLeafCert(t, rootCert, rootKey).Raw},
 				AttestationData:  createValidAttestationData(t, "81000001"),
 				Algorithm:        "INVALID-ALGORITHM", // Invalid algorithm
@@ -102,7 +102,7 @@ func TestTPMCertificateChainValidation(t *testing.T) {
 		{
 			name: "Expired certificate",
 			chain: &pb.TmpCertificateChain{
-				KeyId:            "81000001",
+				KeyId:            "TEST0001",
 				CertificateChain: [][]byte{createExpiredCert(t, rootCert, rootKey).Raw},
 				AttestationData:  createValidAttestationData(t, "81000001"),
 				Algorithm:        "RSA-PSS",
@@ -114,7 +114,7 @@ func TestTPMCertificateChainValidation(t *testing.T) {
 		{
 			name: "Invalid certificate data",
 			chain: &pb.TmpCertificateChain{
-				KeyId:            "81000001",
+				KeyId:            "TEST0001",
 				CertificateChain: [][]byte{[]byte("invalid-cert-data")}, // Invalid cert data
 				AttestationData:  createValidAttestationData(t, "81000001"),
 				Algorithm:        "RSA-PSS",
@@ -126,7 +126,7 @@ func TestTPMCertificateChainValidation(t *testing.T) {
 		{
 			name: "Missing attestation data",
 			chain: &pb.TmpCertificateChain{
-				KeyId:            "81000001",
+				KeyId:            "TEST0001",
 				CertificateChain: [][]byte{createValidLeafCert(t, rootCert, rootKey).Raw},
 				AttestationData:  []byte{}, // Empty attestation data
 				Algorithm:        "RSA-PSS",
@@ -138,7 +138,7 @@ func TestTPMCertificateChainValidation(t *testing.T) {
 		{
 			name: "Invalid timestamps - expiration before creation",
 			chain: &pb.TmpCertificateChain{
-				KeyId:            "81000001",
+				KeyId:            "TEST0001",
 				CertificateChain: [][]byte{createValidLeafCert(t, rootCert, rootKey).Raw},
 				AttestationData:  createValidAttestationData(t, "81000001"),
 				Algorithm:        "RSA-PSS",
@@ -150,7 +150,7 @@ func TestTPMCertificateChainValidation(t *testing.T) {
 		{
 			name: "Expired TPM key",
 			chain: &pb.TmpCertificateChain{
-				KeyId:            "81000001",
+				KeyId:            "TEST0001",
 				CertificateChain: [][]byte{createValidLeafCert(t, rootCert, rootKey).Raw},
 				AttestationData:  createValidAttestationData(t, "81000001"),
 				Algorithm:        "RSA-PSS",
@@ -162,7 +162,7 @@ func TestTPMCertificateChainValidation(t *testing.T) {
 		{
 			name: "Certificate chain too long",
 			chain: &pb.TmpCertificateChain{
-				KeyId: "81000001",
+				KeyId: "TEST0001",
 				CertificateChain: [][]byte{
 					createValidLeafCert(t, rootCert, rootKey).Raw,
 					rootCert.Raw,
@@ -181,7 +181,7 @@ func TestTPMCertificateChainValidation(t *testing.T) {
 		{
 			name: "Invalid certificate key usage",
 			chain: &pb.TmpCertificateChain{
-				KeyId:            "81000001",
+				KeyId:            "TEST0001",
 				CertificateChain: [][]byte{createInvalidKeyUsageCert(t, rootCert, rootKey).Raw},
 				AttestationData:  createValidAttestationData(t, "81000001"),
 				Algorithm:        "RSA-PSS",
@@ -227,7 +227,7 @@ func TestTPMValidationWithUntrustedRoot(t *testing.T) {
 	leafCert := createValidLeafCert(t, untrustedRootCert, untrustedRootKey)
 
 	chain := &pb.TmpCertificateChain{
-		KeyId:            "81000001",
+		KeyId:            "TEST0001",
 		CertificateChain: [][]byte{leafCert.Raw, untrustedRootCert.Raw},
 		AttestationData:  createValidAttestationData(t, "81000001"),
 		Algorithm:        "RSA-PSS",

@@ -222,8 +222,8 @@ func TestHandlerErrorRedaction(t *testing.T) {
 			name:          "Memory allocation error",
 			operation:     "arbitrate",
 			userID:        "service-account",
-			internalError: errors.New("out of memory at 0x7fff8a2e4000, heap dump: /tmp/cam-heap-12345.dump"),
-			sensitiveData: []string{"0x7fff8a2e4000", "/tmp/cam-heap-12345.dump"},
+			internalError: errors.New("out of memory at 0x7fff8a2e4000, temp file: /tmp/cam-temp-12345.log"),
+			sensitiveData: []string{"0x7fff8a2e4000", "/tmp/cam-temp-12345.log"},
 		},
 	}
 
