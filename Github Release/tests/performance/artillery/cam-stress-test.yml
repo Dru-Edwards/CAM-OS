@@ -1,0 +1,137 @@
+config:
+  target: "{{ $processEnvironment.CAM_BASE_URL || 'http://localhost:3000' }}"
+  phases:
+    - duration: 30
+      arrivalRate: 1
+      name: "Baseline measurement"
+    - duration: 120
+      arrivalRate: 1
+      name: "Stress ramp-up"
+      rampTo: 100
+    - duration: 300
+      arrivalRate: 100
+      name: "Peak stress phase"
+    - duration: 60
+      arrivalRate: 100
+      name: "Stress cool-down"
+      rampTo: 1
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      User-Agent: "CAM-Artillery-StressTest/1.0"
+  variables:
+    - stressPayloads:
+        - size: "small"
+          prompt: "{{ $randomString(100) }}"
+        - size: "medium"
+          prompt: "{{ $randomString(1000) }}"
+        - size: "large"
+          prompt: "{{ $randomString(5000) }}"
+        - size: "xlarge"
+          prompt: "{{ $randomString(10000) }}"
+  plugins:
+    metrics-by-endpoint:
+      useOnlyRequestNames: true
+    ensure: {}
+
+scenarios:
+  - name: "Memory Stress Test"
+    weight: 30
+    flow:
+      - loop:
+          - post:
+              url: "/api/v1/arbitration/request"
+              headers:
+                Authorization: "Bearer {{ $processEnvironment.CAM_API_TOKEN }}"
+              json:
+                prompt: "{{ stressPayloads.prompt }}"
+                models: ["gpt-4", "claude-3-opus", "gemini-pro"]
+                max_cost: 1.0
+                store_results: true
+                cache_response: false
+              name: "memory-stress-request"
+          count: 10
+          
+  - name: "Concurrent Request Stress"
+    weight: 25
+    flow:
+      - parallel:
+          - post:
+              url: "/api/v1/arbitration/request"
+              headers:
+                Authorization: "Bearer {{ $processEnvironment.CAM_API_TOKEN }}"
+              json:
+                prompt: "Concurrent test {{ $randomString() }}"
+                models: ["gpt-4"]
+                priority: "high"
+              name: "concurrent-request-1"
+          - post:
+              url: "/api/v1/arbitration/compare"
+              headers:
+                Authorization: "Bearer {{ $processEnvironment.CAM_API_TOKEN }}"
+              json:
+                prompt: "Comparison test {{ $randomString() }}"
+                providers: ["openai", "anthropic"]
+              name: "concurrent-request-2"
+          - post:
+              url: "/api/v1/agents/collaborate"
+              headers:
+                Authorization: "Bearer {{ $processEnvironment.CAM_API_TOKEN }}"
+              json:
+                task: "Collaboration test {{ $randomString() }}"
+                agents: [{"type": "analyst", "model": "gpt-3.5-turbo"}]
+              name: "concurrent-request-3"
+
+  - name: "Resource Exhaustion Test"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/v1/arbitration/batch"
+          headers:
+            Authorization: "Bearer {{ $processEnvironment.CAM_API_TOKEN }}"
+          json:
+            requests:
+              - prompt: "Batch request 1 {{ $randomString(1000) }}"
+                models: ["gpt-4", "claude-3-opus"]
+              - prompt: "Batch request 2 {{ $randomString(1000) }}"
+                models: ["gemini-pro", "gpt-3.5-turbo"]
+              - prompt: "Batch request 3 {{ $randomString(1000) }}"
+                models: ["gpt-4", "claude-3-opus", "gemini-pro"]
+            max_cost: 5.0
+            parallel_execution: true
+          name: "resource-exhaustion-batch"
+
+  - name: "Error Injection Test"
+    weight: 15
+    flow:
+      - post:
+          url: "/api/v1/arbitration/request"
+          headers:
+            Authorization: "Bearer INVALID_TOKEN"
+          json:
+            prompt: "This should fail {{ $randomString() }}"
+            models: ["invalid-model"]
+          name: "error-injection-request"
+          expect:
+            - statusCode: [401, 400, 403]
+
+  - name: "Rate Limit Stress"
+    weight: 10
+    flow:
+      - loop:
+          - post:
+              url: "/api/v1/arbitration/request"
+              headers:
+                Authorization: "Bearer {{ $processEnvironment.CAM_API_TOKEN }}"
+              json:
+                prompt: "Rate limit test {{ $randomString() }}"
+                models: ["gpt-3.5-turbo"]
+                max_cost: 0.01
+              name: "rate-limit-stress"
+          count: 100
+          whileTrue: "response.statusCode === 200"
+
+ensure:
+  maxErrorRate: 15  # Allow higher error rate during stress testing
+  p95: 10000  # Allow longer response times during stress
+  p99: 30000

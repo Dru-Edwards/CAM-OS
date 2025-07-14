@@ -1,0 +1,82 @@
+{% set name = properties.name %}
+{% set region = properties.region %}
+{% set image = properties.image %}
+{% set serviceAccount = properties.serviceAccount %}
+
+resources:
+- name: {{ name }}
+  type: run.googleapis.com/v1
+  properties:
+    apiVersion: serving.knative.dev/v1
+    kind: Service
+    metadata:
+      name: {{ name }}
+      namespace: {{ properties.namespace | default('default') }}
+      annotations:
+        run.googleapis.com/ingress: all
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/cpu-throttling: "false"
+    spec:
+      template:
+        metadata:
+          annotations:
+            autoscaling.knative.dev/maxScale: "{{ properties.scaling.maxInstances }}"
+            autoscaling.knative.dev/minScale: "{{ properties.scaling.minInstances }}"
+            {% if properties.cloudsql %}
+            run.googleapis.com/cloudsql-instances: "{{ properties.cloudsql.instances | join(',') }}"
+            {% endif %}
+            {% if properties.vpc %}
+            run.googleapis.com/vpc-access-connector: "{{ properties.vpc.connector }}"
+            run.googleapis.com/vpc-access-egress: "{{ properties.vpc.egress }}"
+            {% endif %}
+        spec:
+          containerConcurrency: {{ properties.scaling.concurrency | default(80) }}
+          timeoutSeconds: {{ properties.scaling.timeout | default(300) }}
+          serviceAccountName: {{ serviceAccount }}
+          containers:
+          - image: {{ image }}
+            name: {{ name }}
+            ports:
+            - containerPort: {{ properties.port | default(8080) }}
+              protocol: TCP
+            env:
+            {% for key, value in properties.environment.items() %}
+            - name: {{ key }}
+              value: "{{ value }}"
+            {% endfor %}
+            {% if properties.secrets %}
+            {% for key, secret in properties.secrets.items() %}
+            - name: {{ key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ secret.secret }}
+                  key: {{ secret.key }}
+            {% endfor %}
+            {% endif %}
+            resources:
+              limits:
+                cpu: {{ properties.resources.cpu }}
+                memory: {{ properties.resources.memory }}
+              requests:
+                cpu: {{ properties.resources.cpu }}
+                memory: {{ properties.resources.memory }}
+            livenessProbe:
+              httpGet:
+                path: /health
+                port: {{ properties.port | default(8080) }}
+              initialDelaySeconds: 30
+              periodSeconds: 30
+              timeoutSeconds: 5
+            readinessProbe:
+              httpGet:
+                path: /health
+                port: {{ properties.port | default(8080) }}
+              initialDelaySeconds: 5
+              periodSeconds: 10
+              timeoutSeconds: 5
+
+outputs:
+- name: url
+  value: $(ref.{{ name }}.status.url)
+- name: serviceName
+  value: {{ name }}

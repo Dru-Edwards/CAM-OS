@@ -1,0 +1,65 @@
+version: '3.8'
+
+# CAM-OS Quickstart Environment
+services:
+  cam-os:
+    image: cam-os/kernel:latest
+    ports:
+      - "50051:50051"
+      - "8080:8080"
+    environment:
+      - CAM_REDIS_URL=redis://redis:6379
+      - CAM_LOG_LEVEL=info
+      - CAM_METRICS_ENABLED=true
+    depends_on:
+      - redis
+    networks:
+      - cam-network
+    volumes:
+      - ./config:/etc/cam-os
+      - ./logs:/var/log/cam-os
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - cam-network
+    volumes:
+      - redis-data:/data
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - cam-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - cam-network
+
+  toy-llm:
+    image: cam-os/toy-llm:latest
+    ports:
+      - "8081:8080"
+    networks:
+      - cam-network
+
+networks:
+  cam-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  grafana-data:

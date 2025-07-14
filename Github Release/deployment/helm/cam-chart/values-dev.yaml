@@ -1,0 +1,134 @@
+# Development Environment Values
+# Optimized for local development and testing
+
+replicaCount: 1
+
+image:
+  repository: cam/complete-arbitration-mesh
+  tag: "1.0.0-dev"  # H-8: PINNED - Development version tag
+  pullPolicy: Always
+
+# Disable autoscaling for development
+autoscaling:
+  enabled: false
+
+# Reduced resource requirements for development
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# Development environment configuration
+app:
+  nodeEnv: development
+  logLevel: debug
+  environment: development
+
+# CAM development configuration
+cam:
+  meshId: "dev-mesh"
+  nodeType: "arbitrator"
+  consensus:
+    algorithm: "raft"
+    threshold: 0.5
+  arbitration:
+    timeout: "10s"
+    maxParticipants: 3
+    minParticipants: 1
+
+# Disable persistence for faster startup
+persistence:
+  enabled: false
+
+# Disable backup jobs in development
+backupCronJob:
+  enabled: false
+
+cleanupCronJob:
+  enabled: false
+
+# Simple ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: cam-dev.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Disable advanced monitoring features
+monitoring:
+  serviceMonitor:
+    enabled: false
+  prometheusRule:
+    enabled: false
+
+# Network policy disabled for easier development
+networkPolicy:
+  enabled: false
+
+# Simplified database configuration
+postgresql:
+  enabled: true
+  auth:
+    username: cam
+    password: devpassword
+    database: cam_dev
+  primary:
+    persistence:
+      enabled: false
+
+# Simplified cache configuration
+redis:
+  enabled: true
+  auth:
+    password: devpassword
+  master:
+    persistence:
+      enabled: false
+
+# Development security (less strict)
+security:
+  jwt:
+    algorithm: "HS256"
+    secret: "dev-jwt-secret-not-for-production"
+    expiresIn: "24h"
+  encryption:
+    key: "dev-encryption-key-32-chars-long"
+  signing:
+    key: "dev-signing-key-change-in-production"
+  rateLimit:
+    windowMs: 15000
+    max: 1000  # Higher limit for development
+
+# Development init job
+initJob:
+  enabled: true
+  image:
+    repository: cam/init
+    tag: "1.0.0-dev"  # H-8: PINNED - Development version
+    pullPolicy: Always
+
+# Development testing configuration
+tests:
+  enabled: true
+  timeout: "300"
+  image:
+    repository: curlimages/curl
+    tag: "8.5.0"  # H-8: PINNED - Specific curl version
+    pullPolicy: IfNotPresent
+
+# Development backup configuration (using dev-specific version)
+backupCronJob:
+  enabled: false  # Disabled for development
+  image:
+    repository: postgres
+    tag: "15.6-alpine"  # H-8: PINNED - Specific PostgreSQL version
+    pullPolicy: IfNotPresent

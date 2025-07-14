@@ -1,0 +1,144 @@
+config:
+  target: "{{ $processEnvironment.CAM_BASE_URL || 'http://localhost:3000' }}"
+  phases:
+    - duration: 60
+      arrivalRate: 1
+      name: "Warm-up phase"
+    - duration: 300
+      arrivalRate: 5
+      name: "Ramp-up phase"
+      rampTo: 25
+    - duration: 600
+      arrivalRate: 25
+      name: "Sustained load phase"
+    - duration: 300
+      arrivalRate: 25
+      name: "Ramp-down phase"
+      rampTo: 5
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      User-Agent: "CAM-Artillery-LoadTest/1.0"
+  variables:
+    - requestModels:
+        - "gpt-4"
+        - "claude-3-opus"
+        - "gemini-pro"
+        - "gpt-3.5-turbo"
+    - providers:
+        - "openai"
+        - "anthropic"
+        - "google"
+    - complexities:
+        - "simple"
+        - "moderate"
+        - "complex"
+  plugins:
+    metrics-by-endpoint: {}
+    ensure: {}
+    expect: {}
+
+scenarios:
+  - name: "Basic Arbitration Requests"
+    weight: 40
+    flow:
+      - post:
+          url: "/api/v1/arbitration/request"
+          headers:
+            Authorization: "Bearer {{ $processEnvironment.CAM_API_TOKEN }}"
+          json:
+            prompt: "{{ $randomString() }} analysis request"
+            models: "{{ requestModels }}"
+            max_cost: 0.10
+            timeout: 30000
+            metadata:
+              test_type: "artillery_load"
+              complexity: "{{ complexities }}"
+          expect:
+            - statusCode: 200
+            - hasProperty: "arbitration_id"
+            - hasProperty: "selected_provider"
+          capture:
+            - json: "$.arbitration_id"
+              as: "arbitrationId"
+
+  - name: "Provider Comparison Requests"
+    weight: 25
+    flow:
+      - post:
+          url: "/api/v1/arbitration/compare"
+          headers:
+            Authorization: "Bearer {{ $processEnvironment.CAM_API_TOKEN }}"
+          json:
+            prompt: "Compare performance of language models for {{ $randomString() }}"
+            providers: ["{{ providers }}", "{{ providers }}"]
+            criteria:
+              - "response_quality"
+              - "cost_efficiency"
+              - "response_time"
+            max_cost: 0.25
+          expect:
+            - statusCode: 200
+            - hasProperty: "comparison_results"
+            - hasProperty: "recommended_provider"
+
+  - name: "Agent Collaboration Requests"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/v1/agents/collaborate"
+          headers:
+            Authorization: "Bearer {{ $processEnvironment.CAM_API_TOKEN }}"
+          json:
+            task: "Multi-agent analysis of {{ $randomString() }}"
+            agents:
+              - type: "analyst"
+                model: "{{ requestModels }}"
+              - type: "reviewer"
+                model: "{{ requestModels }}"
+            collaboration_mode: "sequential"
+            max_cost: 0.50
+          expect:
+            - statusCode: 200
+            - hasProperty: "collaboration_id"
+            - hasProperty: "agent_results"
+
+  - name: "Cost Optimization Requests"
+    weight: 10
+    flow:
+      - post:
+          url: "/api/v1/optimization/cost"
+          headers:
+            Authorization: "Bearer {{ $processEnvironment.CAM_API_TOKEN }}"
+          json:
+            prompt: "Optimize cost for {{ $randomString() }} analysis"
+            target_quality: 0.8
+            max_cost: 0.05
+            prefer_efficiency: true
+          expect:
+            - statusCode: 200
+            - hasProperty: "optimized_strategy"
+            - hasProperty: "estimated_cost"
+
+  - name: "Status and Monitoring"
+    weight: 5
+    flow:
+      - get:
+          url: "/api/v1/status"
+          expect:
+            - statusCode: 200
+            - hasProperty: "status"
+            - equals:
+              - "healthy"
+      - get:
+          url: "/api/v1/metrics/performance"
+          headers:
+            Authorization: "Bearer {{ $processEnvironment.CAM_API_TOKEN }}"
+          expect:
+            - statusCode: 200
+            - hasProperty: "metrics"
+
+ensure:
+  p95: 2000  # 95th percentile response time should be under 2 seconds
+  p99: 5000  # 99th percentile response time should be under 5 seconds
+  maxErrorRate: 5  # Error rate should not exceed 5%

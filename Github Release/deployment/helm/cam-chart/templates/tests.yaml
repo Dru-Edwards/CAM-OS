@@ -1,0 +1,155 @@
+{{- if .Values.tests.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "cam-chart.fullname" . }}-test"
+  labels:
+    {{- include "cam-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  containers:
+    - name: test
+      image: "{{ .Values.tests.image.repository }}:{{ .Values.tests.image.tag }}"
+      imagePullPolicy: {{ .Values.tests.image.pullPolicy }}
+      env:
+        - name: CAM_SERVICE_URL
+          value: "http://{{ include "cam-chart.fullname" . }}:{{ .Values.service.port }}"
+        {{- if .Values.grpc.enabled }}
+        - name: CAM_GRPC_URL
+          value: "{{ include "cam-chart.fullname" . }}-grpc:{{ .Values.grpc.port }}"
+        {{- end }}
+        - name: TEST_TIMEOUT
+          value: {{ .Values.tests.timeout | quote }}
+        {{- range $key, $value := .Values.tests.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Starting CAM service tests..."
+          
+          # Test 1: Health Check
+          echo "Test 1: Health Check"
+          response=$(wget --spider -S "${CAM_SERVICE_URL}/health" 2>&1 | grep "HTTP/" | awk '{print $2}')
+          if [ "$response" = "200" ]; then
+            echo "✓ Health check passed"
+          else
+            echo "✗ Health check failed (status: $response)"
+            exit 1
+          fi
+          
+          # Test 2: API Readiness
+          echo "Test 2: API Readiness"
+          response=$(wget --spider -S "${CAM_SERVICE_URL}/ready" 2>&1 | grep "HTTP/" | awk '{print $2}')
+          if [ "$response" = "200" ]; then
+            echo "✓ API readiness check passed"
+          else
+            echo "✗ API readiness check failed (status: $response)"
+            exit 1
+          fi
+          
+          # Test 3: Metrics Endpoint
+          {{- if .Values.metrics.enabled }}
+          echo "Test 3: Metrics Endpoint"
+          response=$(wget --spider -S "${CAM_SERVICE_URL}{{ .Values.metrics.path }}" 2>&1 | grep "HTTP/" | awk '{print $2}')
+          if [ "$response" = "200" ]; then
+            echo "✓ Metrics endpoint accessible"
+          else
+            echo "✗ Metrics endpoint failed (status: $response)"
+            exit 1
+          fi
+          {{- end }}
+          
+          # Test 4: Basic API Functionality
+          echo "Test 4: Basic API Functionality"
+          response=$(wget -qO- "${CAM_SERVICE_URL}/api/v1/status" 2>/dev/null || echo "failed")
+          if [ "$response" != "failed" ]; then
+            echo "✓ Basic API functionality test passed"
+          else
+            echo "✗ Basic API functionality test failed"
+            exit 1
+          fi
+          
+          # Test 5: CAM Protocol Test
+          echo "Test 5: CAM Protocol Test"
+          response=$(wget -qO- --post-data='{"type":"test","payload":{"message":"test"}}' \
+            --header='Content-Type:application/json' \
+            "${CAM_SERVICE_URL}/api/v1/arbitrate" 2>/dev/null || echo "failed")
+          if [ "$response" != "failed" ]; then
+            echo "✓ CAM protocol test passed"
+          else
+            echo "✗ CAM protocol test failed"
+            exit 1
+          fi
+          
+          {{- if .Values.grpc.enabled }}
+          # Test 6: gRPC Service
+          echo "Test 6: gRPC Service"
+          # Note: This would require grpcurl or similar tool
+          echo "✓ gRPC service test skipped (requires grpcurl)"
+          {{- end }}
+          
+          echo "All tests passed successfully!"
+      resources:
+        {{- toYaml .Values.tests.resources | nindent 8 }}
+  {{- with .Values.nodeSelector }}
+  nodeSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "cam-chart.fullname" . }}-test-connection"
+  labels:
+    {{- include "cam-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test-connection
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-weight": "2"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test-connection
+      image: busybox:1.35
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Testing service connectivity..."
+          
+          # Test service DNS resolution
+          nslookup {{ include "cam-chart.fullname" . }}
+          
+          # Test service port connectivity
+          nc -z {{ include "cam-chart.fullname" . }} {{ .Values.service.port }}
+          echo "✓ Service port {{ .Values.service.port }} is accessible"
+          
+          {{- if .Values.grpc.enabled }}
+          # Test gRPC service connectivity
+          nc -z {{ include "cam-chart.fullname" . }}-grpc {{ .Values.grpc.port }}
+          echo "✓ gRPC port {{ .Values.grpc.port }} is accessible"
+          {{- end }}
+          
+          {{- if .Values.metrics.enabled }}
+          # Test metrics service connectivity
+          nc -z {{ include "cam-chart.fullname" . }}-metrics {{ .Values.metrics.port }}
+          echo "✓ Metrics port {{ .Values.metrics.port }} is accessible"
+          {{- end }}
+          
+          echo "All connectivity tests passed!"
+{{- end }}

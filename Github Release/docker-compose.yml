@@ -1,0 +1,126 @@
+version: '3.8'
+
+services:
+  # CAM-OS Kernel Core Service
+  cam-kernel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: cam-os/kernel:latest
+    container_name: cam-kernel
+    ports:
+      - "8080:8080"  # gRPC API
+      - "9090:9090"  # Metrics
+    environment:
+      - CAM_LOG_LEVEL=info
+      - CAM_GRPC_PORT=8080
+      - CAM_METRICS_PORT=9090
+      - CAM_REDIS_URL=redis://redis:6379
+      - CAM_POSTGRES_URL=postgres://cam_user:cam_password@postgres:5432/cam_db
+    volumes:
+      - ./MANIFEST.toml:/app/MANIFEST.toml:ro
+    healthcheck:
+      test: ["CMD", "./cam-kernel", "--health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - postgres
+
+  # Redis for context storage and caching
+  redis:
+    image: redis:7-alpine
+    container_name: cam-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # PostgreSQL for persistent storage
+  postgres:
+    image: postgres:15-alpine
+    container_name: cam-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=cam_user
+      - POSTGRES_PASSWORD=cam_password
+      - POSTGRES_DB=cam_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cam_user -d cam_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: cam-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    depends_on:
+      - cam-kernel
+
+  # Grafana for metrics visualization
+  grafana:
+    image: grafana/grafana:10.0.3
+    container_name: cam-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # CAM-OS Driver Runtime (for external drivers)
+  driver-runtime:
+    image: cam-os/driver-runtime:latest
+    container_name: cam-driver-runtime
+    ports:
+      - "8081:8081"
+    environment:
+      - CAM_KERNEL_URL=cam-kernel:8080
+      - CAM_DRIVER_PORT=8081
+    volumes:
+      - ./drivers:/app/drivers:ro
+    restart: unless-stopped
+    depends_on:
+      - cam-kernel
+
+volumes:
+  redis-data:
+  postgres-data:
+  prometheus-data:
+  grafana-data:

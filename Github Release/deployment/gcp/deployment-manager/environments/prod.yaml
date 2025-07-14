@@ -1,0 +1,35 @@
+# Production Environment Configuration
+env:
+  name: prod
+  properties:
+    projectId: cam-arbitration-prod
+    region: us-central1
+    domainName: api.cam-arbitration.com
+    sslEnabled: true
+    
+    database:
+      tier: db-custom-2-7680
+      diskSize: 100
+      highAvailability: true
+      deletionProtection: true
+    
+    redis:
+      tier: STANDARD_HA
+      memorySizeGb: 4
+    
+    cloudRun:
+      imageTag: latest
+      scaling:
+        minInstances: 2
+        maxInstances: 50
+      resources:
+        cpu: "2"
+        memory: 2Gi
+      logLevel: info
+    
+    github:
+      owner: your-org
+      repo: Complete-Arbitration-Mesh-Final
+    
+    monitoring:
+      alertEmail: alerts@your-domain.com

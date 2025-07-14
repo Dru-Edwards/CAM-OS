@@ -1,0 +1,289 @@
+# Google Cloud Platform Deployment Manager Template
+# Complete Arbitration Mesh - Production Ready GCP Infrastructure
+
+imports:
+- path: templates/compute-instance-template.jinja
+- path: templates/cloud-sql.jinja
+- path: templates/cloud-run.jinja
+- path: templates/load-balancer.jinja
+- path: templates/monitoring.jinja
+
+resources:
+# Project Configuration
+- name: cam-project-config
+  type: compute.v1.project
+  properties:
+    name: $(ref.cam-project.name)
+    projectId: ${PROJECT_ID}
+
+# Enable Required APIs
+- name: enable-apis
+  type: deploymentmanager.v2.virtual.enabledApis
+  properties:
+    services:
+    - compute.googleapis.com
+    - run.googleapis.com
+    - sqladmin.googleapis.com
+    - redis.googleapis.com
+    - monitoring.googleapis.com
+    - logging.googleapis.com
+    - secretmanager.googleapis.com
+    - cloudresourcemanager.googleapis.com
+    - servicenetworking.googleapis.com
+    - vpcaccess.googleapis.com
+
+# VPC Network
+- name: cam-vpc
+  type: compute.v1.network
+  properties:
+    name: cam-vpc
+    description: VPC network for Complete Arbitration Mesh
+    autoCreateSubnetworks: false
+    routingConfig:
+      routingMode: REGIONAL
+
+# Subnet for Cloud Run
+- name: cam-subnet
+  type: compute.v1.subnetwork
+  properties:
+    name: cam-subnet
+    description: Subnet for CAM services
+    network: $(ref.cam-vpc.selfLink)
+    ipCidrRange: 10.0.0.0/24
+    region: ${REGION}
+    privateIpGoogleAccess: true
+    secondaryIpRanges:
+    - rangeName: services
+      ipCidrRange: 10.1.0.0/16
+    - rangeName: pods
+      ipCidrRange: 10.2.0.0/16
+
+# VPC Connector for Cloud Run
+- name: cam-vpc-connector
+  type: vpcaccess.v1.connector
+  properties:
+    name: cam-vpc-connector
+    network: $(ref.cam-vpc.name)
+    ipCidrRange: 10.3.0.0/28
+    region: ${REGION}
+    minThroughput: 200
+    maxThroughput: 1000
+
+# Cloud SQL Instance
+- name: cam-postgres
+  type: templates/cloud-sql.jinja
+  properties:
+    name: cam-postgres-${ENV}
+    region: ${REGION}
+    tier: ${DATABASE_TIER}
+    version: POSTGRES_15
+    diskSize: ${DATABASE_DISK_SIZE}
+    network: $(ref.cam-vpc.selfLink)
+    authorizedNetworks: []
+    backupEnabled: true
+    pointInTimeRecoveryEnabled: true
+    highAvailability: ${HA_ENABLED}
+    deletionProtection: ${DELETION_PROTECTION}
+    maintenanceWindow:
+      day: 7
+      hour: 3
+    flags:
+    - name: log_statement
+      value: all
+    - name: log_min_duration_statement
+      value: "100"
+
+# Cloud SQL Database
+- name: cam-database
+  type: sqladmin.v1beta4.database
+  properties:
+    name: camarbitration
+    instance: $(ref.cam-postgres.name)
+    charset: UTF8
+
+# Redis Instance
+- name: cam-redis
+  type: redis.v1.instance
+  properties:
+    instanceId: cam-redis-${ENV}
+    displayName: CAM Redis Cache
+    region: ${REGION}
+    tier: ${REDIS_TIER}
+    memorySizeGb: ${REDIS_MEMORY_SIZE}
+    redisVersion: REDIS_7_0
+    authEnabled: true
+    transitEncryptionMode: SERVER_AUTHENTICATION
+    network: projects/${PROJECT_ID}/global/networks/$(ref.cam-vpc.name)
+    connectMode: PRIVATE_SERVICE_ACCESS
+    redisConfigs:
+      maxmemory-policy: allkeys-lru
+      timeout: "300"
+
+# Service Account for Cloud Run
+- name: cam-service-account
+  type: iam.v1.serviceAccount
+  properties:
+    accountId: cam-service-account
+    displayName: CAM Cloud Run Service Account
+    description: Service account for Complete Arbitration Mesh Cloud Run service
+
+# IAM Binding for Service Account
+- name: cam-sa-cloudsql-client
+  type: gcp-types/cloudresourcemanager-v1:virtual.projects.iamMemberBinding
+  properties:
+    resource: ${PROJECT_ID}
+    role: roles/cloudsql.client
+    member: serviceAccount:$(ref.cam-service-account.email)
+
+- name: cam-sa-secretmanager-accessor
+  type: gcp-types/cloudresourcemanager-v1:virtual.projects.iamMemberBinding
+  properties:
+    resource: ${PROJECT_ID}
+    role: roles/secretmanager.secretAccessor
+    member: serviceAccount:$(ref.cam-service-account.email)
+
+- name: cam-sa-redis-editor
+  type: gcp-types/cloudresourcemanager-v1:virtual.projects.iamMemberBinding
+  properties:
+    resource: ${PROJECT_ID}
+    role: roles/redis.editor
+    member: serviceAccount:$(ref.cam-service-account.email)
+
+# Secret Manager Secrets
+- name: cam-app-secrets
+  type: secretmanager.v1.secret
+  properties:
+    secretId: cam-app-secrets
+    replication:
+      automatic: {}
+
+- name: cam-database-credentials
+  type: secretmanager.v1.secret
+  properties:
+    secretId: cam-database-credentials
+    replication:
+      automatic: {}
+
+# Cloud Run Service
+- name: cam-cloud-run
+  type: templates/cloud-run.jinja
+  properties:
+    name: cam-arbitration-mesh
+    region: ${REGION}
+    image: gcr.io/${PROJECT_ID}/cam-arbitration-mesh:${IMAGE_TAG}
+    serviceAccount: $(ref.cam-service-account.email)
+    vpc:
+      connector: $(ref.cam-vpc-connector.name)
+      egress: private-ranges-only
+    cloudsql:
+      instances:
+      - $(ref.cam-postgres.connectionName)
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      LOG_LEVEL: ${LOG_LEVEL}
+    secrets:
+      DATABASE_URL: 
+        secret: $(ref.cam-database-credentials.name)
+        version: latest
+        key: database_url
+      REDIS_URL:
+        secret: $(ref.cam-app-secrets.name)
+        version: latest
+        key: redis_url
+      JWT_SECRET:
+        secret: $(ref.cam-app-secrets.name)
+        version: latest
+        key: jwt_secret
+    scaling:
+      minInstances: ${MIN_INSTANCES}
+      maxInstances: ${MAX_INSTANCES}
+      cpuThreshold: 70
+      concurrency: 80
+    resources:
+      cpu: ${CPU_LIMIT}
+      memory: ${MEMORY_LIMIT}
+
+# Global Load Balancer
+- name: cam-load-balancer
+  type: templates/load-balancer.jinja
+  properties:
+    name: cam-lb
+    cloudRunService: $(ref.cam-cloud-run.name)
+    region: ${REGION}
+    domains:
+    - ${DOMAIN_NAME}
+    ssl:
+      enabled: ${SSL_ENABLED}
+      managed: true
+
+# Cloud Monitoring
+- name: cam-monitoring
+  type: templates/monitoring.jinja
+  properties:
+    name: cam-monitoring-${ENV}
+    cloudRunService: $(ref.cam-cloud-run.name)
+    cloudSqlInstance: $(ref.cam-postgres.name)
+    redisInstance: $(ref.cam-redis.name)
+    loadBalancer: $(ref.cam-load-balancer.name)
+    notificationChannels:
+    - email: ${ALERT_EMAIL}
+      displayName: CAM Alerts
+
+# Cloud Build Trigger
+- name: cam-build-trigger
+  type: cloudbuild.v1.trigger
+  properties:
+    name: cam-build-trigger
+    description: Build trigger for CAM deployment
+    github:
+      owner: ${GITHUB_OWNER}
+      name: ${GITHUB_REPO}
+      push:
+        branch: ^main$
+    build:
+      steps:
+      - name: gcr.io/cloud-builders/docker
+        args:
+        - build
+        - -t
+        - gcr.io/${PROJECT_ID}/cam-arbitration-mesh:$COMMIT_SHA
+        - -t
+        - gcr.io/${PROJECT_ID}/cam-arbitration-mesh:latest
+        - .
+      - name: gcr.io/cloud-builders/docker
+        args:
+        - push
+        - gcr.io/${PROJECT_ID}/cam-arbitration-mesh:$COMMIT_SHA
+      - name: gcr.io/cloud-builders/docker
+        args:
+        - push
+        - gcr.io/${PROJECT_ID}/cam-arbitration-mesh:latest
+      - name: gcr.io/cloud-builders/gcloud
+        args:
+        - run
+        - deploy
+        - cam-arbitration-mesh
+        - --image=gcr.io/${PROJECT_ID}/cam-arbitration-mesh:$COMMIT_SHA
+        - --region=${REGION}
+        - --platform=managed
+        - --allow-unauthenticated
+      options:
+        logging: CLOUD_LOGGING_ONLY
+        substitution_option: ALLOW_LOOSE
+
+outputs:
+- name: cloudRunUrl
+  value: $(ref.cam-cloud-run.status.url)
+- name: databaseConnectionName
+  value: $(ref.cam-postgres.connectionName)
+- name: redisHost
+  value: $(ref.cam-redis.host)
+- name: loadBalancerIp
+  value: $(ref.cam-load-balancer.ipAddress)
+- name: serviceAccount
+  value: $(ref.cam-service-account.email)
+- name: vpcNetwork
+  value: $(ref.cam-vpc.selfLink)
+- name: subnet
+  value: $(ref.cam-subnet.selfLink)

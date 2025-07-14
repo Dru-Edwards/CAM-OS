@@ -1,0 +1,133 @@
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "cam-chart.fullname" . }}
+  labels:
+    {{- include "cam-chart.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.monitoring.serviceMonitor.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "cam-chart.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: metrics
+      path: {{ .Values.metrics.path }}
+      interval: {{ .Values.monitoring.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout }}
+      {{- with .Values.monitoring.serviceMonitor.metricRelabelings }}
+      metricRelabelings:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.monitoring.serviceMonitor.relabelings }}
+      relabelings:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- with .Values.monitoring.serviceMonitor.namespaceSelector }}
+  namespaceSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
+---
+{{- if .Values.monitoring.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "cam-chart.fullname" . }}
+  labels:
+    {{- include "cam-chart.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: {{ include "cam-chart.fullname" . }}.rules
+      rules:
+        # High CPU Usage Alert
+        - alert: CAMHighCPUUsage
+          expr: rate(container_cpu_usage_seconds_total{pod=~"{{ include "cam-chart.fullname" . }}-.*"}[5m]) > 0.8
+          for: 5m
+          labels:
+            severity: warning
+            service: {{ include "cam-chart.fullname" . }}
+          annotations:
+            summary: "High CPU usage detected for CAM instance"
+            description: "CPU usage is above 80% for {{ "{{ $labels.pod }}" }} for more than 5 minutes."
+        
+        # High Memory Usage Alert
+        - alert: CAMHighMemoryUsage
+          expr: container_memory_usage_bytes{pod=~"{{ include "cam-chart.fullname" . }}-.*"} / container_spec_memory_limit_bytes > 0.9
+          for: 5m
+          labels:
+            severity: warning
+            service: {{ include "cam-chart.fullname" . }}
+          annotations:
+            summary: "High memory usage detected for CAM instance"
+            description: "Memory usage is above 90% for {{ "{{ $labels.pod }}" }} for more than 5 minutes."
+        
+        # Pod Restart Alert
+        - alert: CAMPodRestart
+          expr: increase(kube_pod_container_status_restarts_total{pod=~"{{ include "cam-chart.fullname" . }}-.*"}[15m]) > 0
+          for: 0m
+          labels:
+            severity: warning
+            service: {{ include "cam-chart.fullname" . }}
+          annotations:
+            summary: "CAM pod has restarted"
+            description: "Pod {{ "{{ $labels.pod }}" }} has restarted {{ "{{ $value }}" }} times in the last 15 minutes."
+        
+        # Service Down Alert
+        - alert: CAMServiceDown
+          expr: up{job="{{ include "cam-chart.fullname" . }}"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            service: {{ include "cam-chart.fullname" . }}
+          annotations:
+            summary: "CAM service is down"
+            description: "CAM service {{ "{{ $labels.instance }}" }} has been down for more than 1 minute."
+        
+        # High Error Rate Alert
+        - alert: CAMHighErrorRate
+          expr: rate(http_requests_total{job="{{ include "cam-chart.fullname" . }}", code=~"5.."}[5m]) / rate(http_requests_total{job="{{ include "cam-chart.fullname" . }}"}[5m]) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+            service: {{ include "cam-chart.fullname" . }}
+          annotations:
+            summary: "High error rate detected for CAM service"
+            description: "Error rate is above 10% for {{ "{{ $labels.instance }}" }} for more than 5 minutes."
+        
+        # Arbitration Timeout Alert
+        - alert: CAMArbitrationTimeout
+          expr: increase(cam_arbitration_timeouts_total[5m]) > 5
+          for: 0m
+          labels:
+            severity: warning
+            service: {{ include "cam-chart.fullname" . }}
+          annotations:
+            summary: "High number of arbitration timeouts"
+            description: "{{ "{{ $value }}" }} arbitration timeouts occurred in the last 5 minutes."
+        
+        # Mesh Connectivity Alert
+        - alert: CAMMeshConnectivityIssue
+          expr: cam_mesh_connected_nodes < {{ .Values.cam.arbitration.minParticipants | default 2 }}
+          for: 2m
+          labels:
+            severity: critical
+            service: {{ include "cam-chart.fullname" . }}
+          annotations:
+            summary: "CAM mesh connectivity issue"
+            description: "Only {{ "{{ $value }}" }} nodes are connected to the mesh, below minimum threshold."
+        
+        # Custom alerts from values
+        {{- with .Values.monitoring.prometheusRule.rules }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+{{- end }}

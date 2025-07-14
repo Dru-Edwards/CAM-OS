@@ -1,0 +1,163 @@
+# CAM-OS Public Validation Configuration
+# This configuration is designed for external validation and testing
+
+# Server Configuration
+server:
+  port: 8080
+  host: "0.0.0.0"
+  timeout: 30s
+  
+# Security Configuration (Public Validation)
+security:
+  jwt:
+    expiration: 1h
+    algorithm: "HS256"
+  
+  tls:
+    enabled: true
+    cert_file: "/etc/certs/server.crt"
+    key_file: "/etc/certs/server.key"
+    ca_file: "/etc/certs/ca.crt"
+  
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 100
+    burst_size: 20
+
+# Memory Configuration
+memory:
+  backend: "redis"
+  redis:
+    host: "localhost"
+    port: 6379
+    db: 0
+    timeout: 5s
+    max_connections: 100
+  
+  context:
+    max_size: "100MB"
+    ttl: 3600s
+
+# Syscall Configuration
+syscall:
+  timeout: 500ms
+  max_concurrent: 1000
+  
+  handlers:
+    arbitration:
+      timeout: 100ms
+      max_queue_size: 1000
+    
+    memory:
+      timeout: 50ms
+      cache_size: "50MB"
+    
+    security:
+      timeout: 200ms
+      policy_cache_ttl: 300s
+    
+    explainability:
+      timeout: 75ms
+      audit_enabled: true
+
+# Federation Configuration
+federation:
+  enabled: true
+  cluster_id: "validation-cluster"
+  
+  crdt:
+    sync_interval: 100ms
+    max_peers: 10
+    timeout: 1s
+  
+  discovery:
+    method: "kubernetes"
+    namespace: "cam-os"
+
+# Driver Configuration
+drivers:
+  runtime: "wasm"
+  
+  wasm:
+    max_memory: "50MB"
+    max_execution_time: 5s
+    sandbox_enabled: true
+  
+  grpc:
+    port: 8081
+    timeout: 10s
+    max_connections: 100
+
+# Policy Configuration
+policy:
+  engine: "opa"
+  
+  opa:
+    policy_dir: "/etc/policies"
+    decision_timeout: 100ms
+    cache_enabled: true
+    cache_ttl: 300s
+
+# Observability Configuration
+observability:
+  logging:
+    level: "info"
+    format: "json"
+    output: "stdout"
+  
+  metrics:
+    enabled: true
+    port: 9090
+    path: "/metrics"
+  
+  tracing:
+    enabled: true
+    endpoint: "http://localhost:14268/api/traces"
+    sampler: "const"
+    param: 1
+
+# Performance Configuration
+performance:
+  max_cpu_cores: 4
+  max_memory: "512MB"
+  
+  syscall_targets:
+    latency_p99: "1ms"
+    throughput: 10000
+  
+  benchmark:
+    duration: "60s"
+    concurrent_users: 100
+    ramp_up: "10s"
+
+# Validation Configuration
+validation:
+  enabled: true
+  
+  tests:
+    unit_tests: true
+    integration_tests: true
+    performance_tests: true
+    security_tests: true
+  
+  benchmarks:
+    syscall_latency: true
+    memory_usage: true
+    throughput: true
+    federation_sync: true
+  
+  reports:
+    format: "json"
+    output_dir: "/tmp/validation-reports"
+    detailed: true
+
+# Environment Configuration
+environment:
+  mode: "validation"
+  debug: false
+  
+  features:
+    post_quantum_crypto: true
+    tpm_integration: true
+    advanced_scheduling: true
+    driver_marketplace: true 

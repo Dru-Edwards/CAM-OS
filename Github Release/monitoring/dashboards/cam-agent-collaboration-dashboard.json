@@ -1,0 +1,345 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "cam-agent-collaboration",
+    "title": "CAM Agent Collaboration",
+    "description": "Multi-agent collaboration metrics and communication patterns",
+    "tags": ["cam", "agents", "collaboration"],
+    "timezone": "browser",
+    "schemaVersion": 30,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "agent_id",
+          "type": "query",
+          "query": "label_values(cam_agent_status, agent_id)",
+          "refresh": 1,
+          "multi": true,
+          "includeAll": true
+        },
+        {
+          "name": "collaboration_mode",
+          "type": "query",
+          "query": "label_values(cam_collaboration_sessions, mode)",
+          "refresh": 1,
+          "multi": true,
+          "includeAll": true
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Active Agents",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count(cam_agent_status{status=\"active\",agent_id=~\"$agent_id\"})",
+            "legendFormat": "Active Agents"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "green",
+                  "value": 3
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Collaboration Sessions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(cam_collaboration_sessions{mode=~\"$collaboration_mode\"})",
+            "legendFormat": "Active Sessions"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 10
+                },
+                {
+                  "color": "red",
+                  "value": 50
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Agent Communication Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(cam_agent_messages_total{agent_id=~\"$agent_id\"}[5m]))",
+            "legendFormat": "Messages/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 100
+                },
+                {
+                  "color": "red",
+                  "value": 1000
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 4,
+        "title": "Task Completion Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(cam_agent_tasks_completed_total{agent_id=~\"$agent_id\"}[5m]) / rate(cam_agent_tasks_started_total{agent_id=~\"$agent_id\"}[5m]) * 100",
+            "legendFormat": "Completion Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 80
+                },
+                {
+                  "color": "green",
+                  "value": 95
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        }
+      },
+      {
+        "id": 5,
+        "title": "Agent Network Topology",
+        "type": "nodeGraph",
+        "targets": [
+          {
+            "expr": "cam_agent_connections{agent_id=~\"$agent_id\"}",
+            "legendFormat": "{{source_agent}} -> {{target_agent}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "nodeOptions": {
+                "mainStatUnit": "short",
+                "secondaryStatUnit": "short"
+              }
+            }
+          }
+        },
+        "gridPos": {
+          "h": 12,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 6,
+        "title": "Collaboration Patterns by Mode",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(cam_collaboration_events_total{mode=~\"$collaboration_mode\"}[5m])) by (mode)",
+            "legendFormat": "{{mode}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Events/sec",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 12,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": 7,
+        "title": "Agent Performance Metrics",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "cam_agent_performance_score{agent_id=~\"$agent_id\"}",
+            "legendFormat": "{{agent_id}} - Performance"
+          },
+          {
+            "expr": "cam_agent_reliability_score{agent_id=~\"$agent_id\"}",
+            "legendFormat": "{{agent_id}} - Reliability"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Score",
+            "min": 0,
+            "max": 1
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 20
+        }
+      },
+      {
+        "id": 8,
+        "title": "Message Latency by Agent",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(cam_agent_message_latency_seconds_bucket{agent_id=~\"$agent_id\"}[5m]))",
+            "legendFormat": "{{agent_id}} - 95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(cam_agent_message_latency_seconds_bucket{agent_id=~\"$agent_id\"}[5m]))",
+            "legendFormat": "{{agent_id}} - 50th percentile"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Seconds",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 20
+        }
+      },
+      {
+        "id": 9,
+        "title": "Coordination Overhead",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(cam_coordination_overhead_seconds_total{agent_id=~\"$agent_id\"}[5m])",
+            "legendFormat": "{{agent_id}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Seconds/sec",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 28
+        }
+      },
+      {
+        "id": 10,
+        "title": "Resource Sharing Efficiency",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "cam_resource_sharing_efficiency{agent_id=~\"$agent_id\"}",
+            "legendFormat": "{{agent_id}} - {{resource_type}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Efficiency",
+            "min": 0,
+            "max": 1
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 28
+        }
+      }
+    ]
+  }
+}

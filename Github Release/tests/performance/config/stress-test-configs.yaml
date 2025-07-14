@@ -1,0 +1,342 @@
+# Stress Testing Configuration for CAM System
+
+# Memory Stress Tests
+memory_stress:
+  name: "Memory Stress Testing"
+  description: "Tests system behavior under memory pressure"
+  duration: 1800  # 30 minutes
+  
+  test_scenarios:
+    - name: "large_payload_processing"
+      description: "Processing requests with very large payloads"
+      parameters:
+        payload_sizes: [1, 5, 10, 50, 100]  # MB
+        concurrent_requests: 50
+        memory_threshold: 8192  # MB
+      stress_conditions:
+        gradual_increase: true
+        peak_duration: 300  # seconds
+        recovery_time: 180
+      expected_behavior:
+        graceful_degradation: true
+        memory_cleanup: true
+        error_rate_threshold: 0.1
+        
+    - name: "memory_leak_detection"
+      description: "Long-running test to detect memory leaks"
+      parameters:
+        test_duration: 3600  # 1 hour
+        request_rate: 10  # requests per second
+        heap_monitoring: true
+      stress_conditions:
+        continuous_load: true
+        gc_monitoring: true
+        heap_growth_tracking: true
+      expected_behavior:
+        stable_memory_usage: true
+        max_heap_growth: 0.05  # 5% per hour
+        gc_efficiency: 0.90
+        
+    - name: "concurrent_session_stress"
+      description: "High number of concurrent user sessions"
+      parameters:
+        max_sessions: 10000
+        session_duration: 600  # 10 minutes
+        session_activity: "high"
+      stress_conditions:
+        rapid_session_creation: true
+        session_overlap: true
+        connection_pooling: true
+      expected_behavior:
+        session_management_efficiency: true
+        connection_reuse: 0.85
+        session_cleanup: true
+
+# CPU Stress Tests
+cpu_stress:
+  name: "CPU Stress Testing"
+  description: "Tests system behavior under high CPU load"
+  duration: 1200  # 20 minutes
+  
+  test_scenarios:
+    - name: "computation_intensive_arbitration"
+      description: "CPU-intensive arbitration decisions"
+      parameters:
+        complex_algorithms: true
+        large_decision_trees: true
+        parallel_processing: true
+      stress_conditions:
+        cpu_utilization_target: 0.95
+        core_saturation: true
+        context_switching: "high"
+      expected_behavior:
+        response_time_degradation: 0.20  # 20% increase acceptable
+        algorithm_efficiency: true
+        thermal_throttling_resistance: true
+        
+    - name: "concurrent_ml_inference"
+      description: "Multiple ML model inferences simultaneously"
+      parameters:
+        model_count: 10
+        inference_batch_size: 32
+        model_complexity: "high"
+      stress_conditions:
+        cpu_bound_operations: true
+        memory_bandwidth_pressure: true
+        cache_thrashing: "possible"
+      expected_behavior:
+        inference_accuracy: 0.95
+        batch_processing_efficiency: 0.80
+        resource_contention_handling: true
+
+# Network Stress Tests
+network_stress:
+  name: "Network Stress Testing"
+  description: "Tests system behavior under network pressure"
+  duration: 900  # 15 minutes
+  
+  test_scenarios:
+    - name: "high_connection_volume"
+      description: "Maximum concurrent network connections"
+      parameters:
+        max_connections: 5000
+        connection_rate: 100  # per second
+        keep_alive_duration: 300
+      stress_conditions:
+        connection_pool_exhaustion: "approaching"
+        file_descriptor_pressure: true
+        network_buffer_saturation: true
+      expected_behavior:
+        connection_management: true
+        graceful_connection_rejection: true
+        resource_cleanup: true
+        
+    - name: "bandwidth_saturation"
+      description: "Network bandwidth utilization testing"
+      parameters:
+        target_bandwidth: "1Gbps"
+        packet_size_variation: true
+        concurrent_streams: 100
+      stress_conditions:
+        network_congestion: "simulated"
+        packet_loss_rate: 0.01
+        latency_variation: "high"
+      expected_behavior:
+        congestion_control: true
+        adaptive_rate_limiting: true
+        quality_preservation: 0.90
+        
+    - name: "provider_connectivity_stress"
+      description: "Stress testing external provider connections"
+      parameters:
+        provider_count: 15
+        simultaneous_requests: 200
+        timeout_scenarios: true
+      stress_conditions:
+        provider_rate_limits: "triggered"
+        network_partitions: "simulated"
+        dns_resolution_delays: true
+      expected_behavior:
+        failover_mechanisms: true
+        retry_logic_efficiency: true
+        circuit_breaker_activation: true
+
+# Concurrency Stress Tests
+concurrency_stress:
+  name: "Concurrency Stress Testing"
+  description: "Tests system behavior under extreme concurrency"
+  duration: 1800  # 30 minutes
+  
+  test_scenarios:
+    - name: "massive_concurrent_requests"
+      description: "Handling extremely high concurrent request volume"
+      parameters:
+        concurrent_users: 2000
+        requests_per_user: 10
+        request_burst_pattern: true
+      stress_conditions:
+        thread_pool_saturation: true
+        queue_depth_maximum: true
+        resource_contention: "high"
+      expected_behavior:
+        queue_management: true
+        backpressure_handling: true
+        priority_preservation: true
+        
+    - name: "database_connection_stress"
+      description: "Database connection pool under extreme load"
+      parameters:
+        max_db_connections: 200
+        connection_acquisition_rate: 50  # per second
+        query_complexity: "high"
+      stress_conditions:
+        connection_pool_exhaustion: true
+        deadlock_potential: "high"
+        transaction_contention: true
+      expected_behavior:
+        connection_pooling_efficiency: true
+        deadlock_detection: true
+        transaction_isolation: true
+        
+    - name: "agent_coordination_stress"
+      description: "Multi-agent coordination under stress"
+      parameters:
+        agent_count: 100
+        coordination_frequency: "high"
+        decision_conflicts: "frequent"
+      stress_conditions:
+        consensus_algorithm_stress: true
+        communication_overhead: "maximum"
+        coordination_timeouts: "possible"
+      expected_behavior:
+        consensus_achievement: 0.95
+        coordination_efficiency: 0.75
+        conflict_resolution: true
+
+# I/O Stress Tests
+io_stress:
+  name: "I/O Stress Testing"
+  description: "Tests system behavior under I/O pressure"
+  duration: 1200  # 20 minutes
+  
+  test_scenarios:
+    - name: "disk_io_intensive"
+      description: "High disk I/O operations"
+      parameters:
+        file_operations: "intensive"
+        log_writing_rate: "high"
+        cache_miss_rate: 0.5
+      stress_conditions:
+        disk_utilization: 0.95
+        iops_saturation: true
+        storage_latency: "high"
+      expected_behavior:
+        io_queue_management: true
+        write_buffering: true
+        performance_degradation: 0.30
+        
+    - name: "logging_system_stress"
+      description: "Stress testing comprehensive logging"
+      parameters:
+        log_volume: "maximum"
+        log_destinations: ["file", "network", "database"]
+        structured_logging: true
+      stress_conditions:
+        log_buffer_overflow: "potential"
+        disk_space_pressure: true
+        network_logging_latency: "high"
+      expected_behavior:
+        log_rotation: true
+        buffer_management: true
+        log_integrity: true
+
+# Fault Injection Tests
+fault_injection:
+  name: "Fault Injection Testing"
+  description: "Tests system resilience under various failure conditions"
+  duration: 2400  # 40 minutes
+  
+  test_scenarios:
+    - name: "provider_failure_cascade"
+      description: "Simulating provider failures and cascading effects"
+      parameters:
+        failure_percentage: [10, 25, 50, 75]
+        failure_duration: [30, 120, 300]  # seconds
+        failure_patterns: ["random", "sequential", "geographic"]
+      stress_conditions:
+        circuit_breaker_activation: true
+        fallback_mechanism_stress: true
+        provider_recovery_timing: "variable"
+      expected_behavior:
+        graceful_degradation: true
+        failover_speed: 5  # seconds
+        service_recovery: true
+        
+    - name: "network_partition_simulation"
+      description: "Simulating network partitions and connectivity issues"
+      parameters:
+        partition_duration: [60, 300, 900]  # seconds
+        affected_services: ["database", "providers", "agents"]
+        partition_recovery: "gradual"
+      stress_conditions:
+        split_brain_scenarios: "possible"
+        data_consistency_challenges: true
+        service_discovery_issues: true
+      expected_behavior:
+        partition_tolerance: true
+        consistency_maintenance: true
+        automatic_recovery: true
+
+# Resource Exhaustion Tests
+resource_exhaustion:
+  name: "Resource Exhaustion Testing"
+  description: "Tests system behavior when resources are exhausted"
+  duration: 1500  # 25 minutes
+  
+  test_scenarios:
+    - name: "connection_pool_exhaustion"
+      description: "Testing behavior when connection pools are exhausted"
+      parameters:
+        pool_size_limits: true
+        connection_timeout: 30  # seconds
+        retry_mechanisms: true
+      stress_conditions:
+        pool_starvation: true
+        connection_leaks: "simulated"
+        timeout_cascades: "possible"
+      expected_behavior:
+        queue_management: true
+        timeout_handling: true
+        resource_cleanup: true
+        
+    - name: "file_descriptor_exhaustion"
+      description: "Testing system behavior with file descriptor limits"
+      parameters:
+        fd_monitoring: true
+        cleanup_mechanisms: true
+        limit_enforcement: true
+      stress_conditions:
+        fd_leak_simulation: true
+        ulimit_approach: true
+        socket_exhaustion: "possible"
+      expected_behavior:
+        resource_monitoring: true
+        proactive_cleanup: true
+        graceful_degradation: true
+
+# Performance Degradation Thresholds
+degradation_thresholds:
+  acceptable_performance_loss:
+    latency_increase: 0.50  # 50% increase under stress
+    throughput_decrease: 0.30  # 30% decrease under stress
+    error_rate_increase: 0.05  # 5% error rate under stress
+  
+  critical_failure_thresholds:
+    response_time: 5000  # 5 seconds
+    error_rate: 0.20  # 20%
+    availability: 0.95  # 95%
+    
+  recovery_requirements:
+    recovery_time: 300  # 5 minutes maximum
+    gradual_recovery: true
+    automatic_recovery: true
+
+# Stress Test Execution Environment
+execution_environment:
+  resource_limits:
+    memory_limit: "16GB"
+    cpu_cores: 8
+    network_bandwidth: "10Gbps"
+    disk_space: "1TB"
+    
+  monitoring:
+    system_metrics: true
+    application_metrics: true
+    custom_metrics: true
+    real_time_alerting: true
+    
+  safety_measures:
+    automatic_termination: true
+    resource_protection: true
+    data_backup: true
+    rollback_capability: true

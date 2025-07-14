@@ -1,0 +1,162 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cam-arbitration-mesh.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "cam-arbitration-mesh.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.app.autoscaling.enabled }}
+  replicas: {{ .Values.app.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "cam-arbitration-mesh.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- include "cam-arbitration-mesh.podAnnotations" . | nindent 8 }}
+      labels:
+        {{- include "cam-arbitration-mesh.selectorLabels" . | nindent 8 }}
+        {{- include "cam-arbitration-mesh.podLabels" . | nindent 8 }}
+    spec:
+      {{- include "cam-arbitration-mesh.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "cam-arbitration-mesh.serviceAccountName" . }}
+      securityContext:
+        {{- include "cam-arbitration-mesh.podSecurityContext" . | nindent 8 }}
+      {{- if or .Values.initContainers.waitForDb.enabled .Values.initContainers.waitForRedis.enabled }}
+      initContainers:
+        {{- if .Values.initContainers.waitForDb.enabled }}
+        - name: wait-for-db
+          image: {{ .Values.initContainers.waitForDb.image.registry }}/{{ .Values.initContainers.waitForDb.image.repository }}:{{ .Values.initContainers.waitForDb.image.tag }}
+          imagePullPolicy: {{ .Values.initContainers.waitForDb.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h {{ include "cam-arbitration-mesh.databaseHost" . }} -p {{ include "cam-arbitration-mesh.databasePort" . }} -U {{ include "cam-arbitration-mesh.databaseUsername" . }}; do
+                echo "Waiting for PostgreSQL..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready!"
+          resources:
+            {{- toYaml .Values.initContainers.waitForDb.resources | nindent 12 }}
+        {{- end }}
+        {{- if .Values.initContainers.waitForRedis.enabled }}
+        - name: wait-for-redis
+          image: {{ .Values.initContainers.waitForRedis.image.registry }}/{{ .Values.initContainers.waitForRedis.image.repository }}:{{ .Values.initContainers.waitForRedis.image.tag }}
+          imagePullPolicy: {{ .Values.initContainers.waitForRedis.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              until redis-cli -h {{ include "cam-arbitration-mesh.redisHost" . }} -p {{ include "cam-arbitration-mesh.redisPort" . }} ping; do
+                echo "Waiting for Redis..."
+                sleep 2
+              done
+              echo "Redis is ready!"
+          {{- if .Values.redis.auth.enabled }}
+          env:
+            - name: REDISCLI_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cam-arbitration-mesh.redisPasswordSecret" . }}
+                  key: {{ include "cam-arbitration-mesh.redisPasswordSecretKey" . }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.initContainers.waitForRedis.resources | nindent 12 }}
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- include "cam-arbitration-mesh.containerSecurityContext" . | nindent 12 }}
+          image: {{ include "cam-arbitration-mesh.image" . }}
+          imagePullPolicy: {{ include "cam-arbitration-mesh.imagePullPolicy" . }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.app.env.PORT | default 3000 }}
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.app.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            - name: DATABASE_URL
+              value: {{ include "cam-arbitration-mesh.databaseUrl" . | quote }}
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cam-arbitration-mesh.databasePasswordSecret" . }}
+                  key: {{ include "cam-arbitration-mesh.databasePasswordSecretKey" . }}
+            - name: REDIS_URL
+              value: {{ include "cam-arbitration-mesh.redisUrl" . | quote }}
+            {{- if .Values.redis.auth.enabled }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cam-arbitration-mesh.redisPasswordSecret" . }}
+                  key: {{ include "cam-arbitration-mesh.redisPasswordSecretKey" . }}
+            {{- end }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cam-arbitration-mesh.secretName" . }}
+                  key: jwt-secret
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cam-arbitration-mesh.secretName" . }}
+                  key: encryption-key
+          {{- if .Values.app.envFrom }}
+          envFrom:
+            {{- toYaml .Values.app.envFrom | nindent 12 }}
+          {{- end }}
+          {{- if .Values.app.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.app.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.app.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.app.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.app.startupProbe }}
+          startupProbe:
+            {{- toYaml .Values.app.startupProbe | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- include "cam-arbitration-mesh.resources" . | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: var-cache
+              mountPath: /var/cache
+            - name: var-log
+              mountPath: /var/log
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "cam-arbitration-mesh.configMapName" . }}
+        - name: tmp
+          emptyDir: {}
+        - name: var-cache
+          emptyDir: {}
+        - name: var-log
+          emptyDir: {}
+      {{- if .Values.app.nodeSelector }}
+      nodeSelector:
+        {{- include "cam-arbitration-mesh.nodeSelector" . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.app.affinity }}
+      affinity:
+        {{- include "cam-arbitration-mesh.affinity" . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.app.tolerations }}
+      tolerations:
+        {{- include "cam-arbitration-mesh.tolerations" . | nindent 8 }}
+      {{- end }}

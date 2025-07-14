@@ -1,0 +1,253 @@
+# Staging Environment Values
+# Balanced configuration for staging/testing environment
+
+replicaCount: 3
+
+image:
+  repository: cam/complete-arbitration-mesh
+  tag: "staging"
+  pullPolicy: Always
+
+# Staging resource allocation
+resources:
+  limits:
+    cpu: 1500m
+    memory: 1.5Gi
+  requests:
+    cpu: 750m
+    memory: 768Mi
+
+# Staging environment configuration
+app:
+  nodeEnv: staging
+  logLevel: info
+  environment: staging
+
+# Staging CAM configuration
+cam:
+  meshId: "staging-mesh"
+  nodeType: "arbitrator"
+  consensus:
+    algorithm: "raft"
+    threshold: 0.66
+  arbitration:
+    timeout: "45s"
+    maxParticipants: 15
+    minParticipants: 3
+
+# Enable autoscaling for staging testing
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Staging persistence
+persistence:
+  enabled: true
+  size: 50Gi
+  storageClass: "standard"
+  backup:
+    enabled: true
+    size: 200Gi
+
+# Staging ingress with basic TLS
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+  hosts:
+    - host: cam-staging.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: cam-staging-tls
+      hosts:
+        - cam-staging.yourdomain.com
+
+# Enable monitoring for staging validation
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    labels:
+      release: prometheus
+  prometheusRule:
+    enabled: true
+
+# Enable tracing with higher sampling for testing
+tracing:
+  enabled: true
+  samplingRate: 0.1
+  jaeger:
+    endpoint: "http://jaeger-collector.monitoring:14268/api/traces"
+
+# Staging security (production-like but with test secrets)
+security:
+  jwt:
+    algorithm: "HS256"
+    secret: "staging-jwt-secret-replace-in-production"
+    expiresIn: "4h"
+  encryption:
+    key: "staging-encryption-key-32-chars"
+  signing:
+    key: "staging-signing-key-replace-prod"
+  rateLimit:
+    windowMs: 30000
+    max: 500
+  cors:
+    enabled: true
+
+# Network policy for staging security testing
+networkPolicy:
+  enabled: true
+  ingress:
+    enabled: true
+  egress:
+    enabled: true
+
+# Pod disruption budget for staging HA testing
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Staging database configuration
+postgresql:
+  enabled: true
+  auth:
+    username: cam
+    password: stagingpassword
+    database: cam_staging
+  primary:
+    persistence:
+      enabled: true
+      size: 50Gi
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+
+# Staging cache configuration
+redis:
+  enabled: true
+  auth:
+    password: stagingpassword
+  master:
+    persistence:
+      enabled: true
+      size: 10Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+# Enable backup jobs for staging data protection testing
+backupCronJob:
+  enabled: true
+  schedule: "0 3 * * *"  # Daily at 3 AM
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+cleanupCronJob:
+  enabled: true
+  schedule: "0 4 * * 0"  # Weekly
+  retentionDays: 30
+
+# RBAC testing
+rbac:
+  create: true
+  createCRDPermissions: true  # Test CRD permissions
+  createNamespaceRole: true
+
+# Staging gRPC configuration
+grpc:
+  enabled: true
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/grpc-backend: "true"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      cert-manager.io/cluster-issuer: "letsencrypt-staging"
+    hosts:
+      - host: grpc-staging.yourdomain.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: grpc-staging-tls
+        hosts:
+          - grpc-staging.yourdomain.com
+
+# Enable integrations for staging testing
+integrations:
+  openai:
+    enabled: true
+    apiKey: "sk-staging-test-key"
+  anthropic:
+    enabled: true
+    apiKey: "staging-test-key"
+
+# Staging external services
+external:
+  webhook:
+    enabled: true
+    secret: "staging-webhook-secret"
+  smtp:
+    enabled: true
+    host: "smtp-staging.yourdomain.com"
+    port: 587
+    username: "staging@yourdomain.com"
+    password: "staging-smtp-password"
+
+# Enable comprehensive testing in staging
+tests:
+  enabled: true
+  timeout: "300"
+
+# Performance settings for staging
+performance:
+  cacheSize: "200MB"
+  workerThreads: 6
+  batchSize: 500
+  optimizationLevel: "high"
+
+# Staging agents configuration
+agents:
+  discovery:
+    enabled: true
+    interval: "45s"
+  collaboration:
+    mode: "cooperative"
+  maxConcurrent: 10
+
+# Node affinity for staging
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - cam-chart
+          topologyKey: kubernetes.io/hostname

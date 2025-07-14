@@ -1,0 +1,400 @@
+syntax = "proto3";
+
+package cam.syscall;
+
+option go_package = "github.com/cam-os/kernel/proto/generated";
+
+// Comprehensive syscall service definition with TPM support
+service SyscallService {
+  // Core arbitration operations
+  rpc Arbitrate(ArbitrateRequest) returns (ArbitrateResponse);
+  rpc CommitTask(CommitTaskRequest) returns (CommitTaskResponse);
+  rpc TaskRollback(TaskRollbackRequest) returns (TaskRollbackResponse);
+  rpc AgentRegister(AgentRegisterRequest) returns (AgentRegisterResponse);
+  
+  // Policy operations
+  rpc QueryPolicy(QueryPolicyRequest) returns (QueryPolicyResponse);
+  rpc PolicyUpdate(PolicyUpdateRequest) returns (PolicyUpdateResponse);
+  
+  // Memory context operations
+  rpc ContextRead(ContextReadRequest) returns (ContextReadResponse);
+  rpc ContextWrite(ContextWriteRequest) returns (ContextWriteResponse);
+  rpc ContextSnapshot(ContextSnapshotRequest) returns (ContextSnapshotResponse);
+  rpc ContextRestore(ContextRestoreRequest) returns (ContextRestoreResponse);
+  rpc SnapshotContext(SnapshotContextRequest) returns (SnapshotContextResponse);
+  rpc ContextVersionList(ContextVersionListRequest) returns (ContextVersionListResponse);
+  
+  // Security operations with TPM support
+  rpc TmpSign(TmpSignRequest) returns (TmpSignResponse);
+  rpc VerifyManifest(VerifyManifestRequest) returns (VerifyManifestResponse);
+  rpc EstablishSecureChannel(EstablishSecureChannelRequest) returns (EstablishSecureChannelResponse);
+  
+  // Observability operations
+  rpc ExplainAction(ExplainActionRequest) returns (ExplainActionResponse);
+  rpc EmitTrace(EmitTraceRequest) returns (EmitTraceResponse);
+  rpc EmitMetric(EmitMetricRequest) returns (EmitMetricResponse);
+  rpc SystemTuning(SystemTuningRequest) returns (SystemTuningResponse);
+  
+  // Health check
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// Enhanced task types for cognitive workloads
+enum TaskType {
+  TASK_TYPE_UNSPECIFIED = 0;
+  TASK_TYPE_ARBITRATION = 1;
+  TASK_TYPE_COLLABORATION = 2;
+  TASK_TYPE_ROUTING = 3;
+  TASK_TYPE_ANALYSIS = 4;
+  TASK_TYPE_SECURITY = 5;
+  TASK_TYPE_MEMORY = 6;
+  TASK_TYPE_POLICY = 7;
+}
+
+// TPM Certificate Chain for hardware-backed security (H-10 requirement)
+message TpmCertificateChain {
+  string key_id = 1;                    // TPM key identifier
+  repeated bytes certificate_chain = 2; // X.509 certificate chain in DER format
+  bytes attestation_data = 3;           // TPM attestation data
+  string algorithm = 4;                 // Signing algorithm (e.g., "RSA-PSS", "ECDSA")
+  int64 created_at = 5;                 // Key creation timestamp
+  int64 expires_at = 6;                 // Key expiration timestamp
+  map<string, string> attributes = 7;   // Additional key attributes
+}
+
+// Core Task message with TPM support
+message Task {
+  string id = 1;
+  string description = 2;
+  repeated string requirements = 3;
+  map<string, string> metadata = 4;
+  int64 priority = 5;
+  int64 deadline = 6;
+  TaskType type = 7;
+  string agent_id = 8;
+  TpmCertificateChain tmp_identity = 9; // TPM-backed identity (H-10)
+}
+
+// ArbitrationResult message with TPM verification
+message ArbitrationResult {
+  string task_id = 1;
+  string assigned_agent = 2;
+  string provider = 3;
+  double confidence = 4;
+  string reasoning = 5;
+  map<string, string> metadata = 6;
+  string trace_id = 7;
+  int64 timestamp = 8;
+  TpmCertificateChain tmp_proof = 9;    // TPM-backed proof of assignment (H-10)
+}
+
+// ArbitrateRequest message with TPM caller identity
+message ArbitrateRequest {
+  Task task = 1;
+  string policy_id = 2;
+  string caller_id = 3;
+  map<string, string> context = 4;
+  TpmCertificateChain caller_tmp_identity = 5; // TPM-backed caller identity (H-10)
+}
+
+// ArbitrateResponse message
+message ArbitrateResponse {
+  ArbitrationResult result = 1;
+  string error = 2;
+  int32 status_code = 3;
+}
+
+// Task commitment operations
+message CommitTaskRequest {
+  Task task = 1;
+  string agent_id = 2;
+  string caller_id = 3;
+  TpmCertificateChain agent_tmp_identity = 4; // TPM-backed agent identity (H-10)
+}
+
+message CommitTaskResponse {
+  string task_id = 1;
+  string commit_id = 2;
+  string error = 3;
+  int32 status_code = 4;
+}
+
+message TaskRollbackRequest {
+  string task_id = 1;
+  string reason = 2;
+  string caller_id = 3;
+  TpmCertificateChain caller_tmp_identity = 4; // TPM-backed caller identity (H-10)
+}
+
+message TaskRollbackResponse {
+  string task_id = 1;
+  string error = 2;
+  int32 status_code = 3;
+}
+
+// Agent registration with TPM support
+message AgentRegisterRequest {
+  string agent_id = 1;
+  repeated string capabilities = 2;
+  map<string, string> metadata = 3;
+  string caller_id = 4;
+  TpmCertificateChain agent_tmp_identity = 5; // TPM-backed agent identity (H-10)
+}
+
+message AgentRegisterResponse {
+  string agent_id = 1;
+  string error = 2;
+  int32 status_code = 3;
+}
+
+// Policy operations
+message QueryPolicyRequest {
+  string policy_id = 1;
+  string query = 2;
+  map<string, string> context = 3;
+  string caller_id = 4;
+  TpmCertificateChain caller_tmp_identity = 5; // TPM-backed caller identity (H-10)
+}
+
+message QueryPolicyResponse {
+  bool allowed = 1;
+  string reason = 2;
+  string error = 3;
+  int32 status_code = 4;
+}
+
+message PolicyUpdateRequest {
+  string policy_id = 1;
+  bytes policy_data = 2;
+  map<string, string> metadata = 3;
+  string caller_id = 4;
+  TpmCertificateChain caller_tmp_identity = 5; // TPM-backed caller identity (H-10)
+}
+
+message PolicyUpdateResponse {
+  string policy_id = 1;
+  int64 version = 2;
+  string error = 3;
+  int32 status_code = 4;
+}
+
+// Memory context operations with TPM integrity
+message ContextReadRequest {
+  string namespace = 1;
+  string key = 2;
+  int64 version = 3;
+  string caller_id = 4;
+  TpmCertificateChain caller_tmp_identity = 5; // TPM-backed caller identity (H-10)
+}
+
+message ContextReadResponse {
+  bytes data = 1;
+  int64 version = 2;
+  string hash = 3;
+  int64 timestamp = 4;
+  map<string, string> metadata = 5;
+  string error = 6;
+  int32 status_code = 7;
+  TpmCertificateChain integrity_proof = 8; // TPM-backed integrity proof (H-10)
+}
+
+message ContextWriteRequest {
+  string namespace = 1;
+  string key = 2;
+  bytes data = 3;
+  map<string, string> metadata = 4;
+  string caller_id = 5;
+  TpmCertificateChain caller_tmp_identity = 6; // TPM-backed caller identity (H-10)
+}
+
+message ContextWriteResponse {
+  int64 version = 1;
+  string hash = 2;
+  string error = 3;
+  int32 status_code = 4;
+  TpmCertificateChain write_proof = 5; // TPM-backed write proof (H-10)
+}
+
+message ContextSnapshotRequest {
+  string namespace = 1;
+  string description = 2;
+  string caller_id = 3;
+  TpmCertificateChain caller_tmp_identity = 4; // TPM-backed caller identity (H-10)
+}
+
+message ContextSnapshotResponse {
+  string snapshot_id = 1;
+  string error = 2;
+  int32 status_code = 3;
+}
+
+message ContextRestoreRequest {
+  string snapshot_id = 1;
+  bool force = 2;
+  string caller_id = 3;
+  TpmCertificateChain caller_tmp_identity = 4; // TPM-backed caller identity (H-10)
+}
+
+message ContextRestoreResponse {
+  string namespace = 1;
+  int64 restored_items = 2;
+  string error = 3;
+  int32 status_code = 4;
+}
+
+message SnapshotContextRequest {
+  string namespace = 1;
+  string description = 2;
+  string caller_id = 3;
+  TpmCertificateChain caller_tmp_identity = 4; // TPM-backed caller identity (H-10)
+}
+
+message SnapshotContextResponse {
+  string snapshot_id = 1;
+  string error = 2;
+  int32 status_code = 3;
+}
+
+message ContextVersionListRequest {
+  string namespace = 1;
+  string key = 2;
+  int32 limit = 3;
+  int64 since_version = 4;
+  string caller_id = 5;
+  TpmCertificateChain caller_tmp_identity = 6; // TPM-backed caller identity (H-10)
+}
+
+message VersionInfo {
+  int64 version = 1;
+  int64 timestamp = 2;
+  string author = 3;
+  string description = 4;
+  string hash = 5;
+  int64 size = 6;
+  map<string, string> tags = 7;
+}
+
+message ContextVersionListResponse {
+  repeated VersionInfo versions = 1;
+  bool has_more = 2;
+  string next_token = 3;
+  string error = 4;
+  int32 status_code = 5;
+}
+
+// Security operations with TPM support
+message TmpSignRequest {
+  bytes data = 1;
+  string key_id = 2;
+  string algorithm = 3;
+  string caller_id = 4;
+  TpmCertificateChain caller_tmp_identity = 5; // TPM-backed caller identity (H-10)
+}
+
+message TmpSignResponse {
+  bytes signature = 1;
+  TpmCertificateChain signing_certificate = 2; // TPM certificate chain (H-10)
+  string error = 3;
+  int32 status_code = 4;
+}
+
+message VerifyManifestRequest {
+  bytes manifest_data = 1;
+  bytes signature = 2;
+  TpmCertificateChain certificate_chain = 3; // TPM certificate chain (H-10)
+  string caller_id = 4;
+}
+
+message VerifyManifestResponse {
+  bool valid = 1;
+  string error = 2;
+  int32 status_code = 3;
+}
+
+message EstablishSecureChannelRequest {
+  string peer_id = 1;
+  bytes ephemeral_public_key = 2;
+  string caller_id = 3;
+  TpmCertificateChain caller_tmp_identity = 4; // TPM-backed caller identity (H-10)
+}
+
+message EstablishSecureChannelResponse {
+  string channel_id = 1;
+  bytes ephemeral_public_key = 2;
+  TpmCertificateChain peer_certificate = 3; // TPM-backed peer certificate (H-10)
+  string error = 4;
+  int32 status_code = 5;
+}
+
+// Observability operations
+message ExplainActionRequest {
+  string trace_id = 1;
+  string action_id = 2;
+  string caller_id = 3;
+  TpmCertificateChain caller_tmp_identity = 4; // TPM-backed caller identity (H-10)
+}
+
+message ExplainActionResponse {
+  string explanation = 1;
+  double confidence = 2;
+  repeated string evidence = 3;
+  string error = 4;
+  int32 status_code = 5;
+}
+
+message EmitTraceRequest {
+  string trace_id = 1;
+  string span_id = 2;
+  string operation = 3;
+  int64 timestamp = 4;
+  int64 duration = 5;
+  map<string, string> tags = 6;
+  string caller_id = 7;
+}
+
+message EmitTraceResponse {
+  string error = 1;
+  int32 status_code = 2;
+}
+
+message EmitMetricRequest {
+  string name = 1;
+  double value = 2;
+  string unit = 3;
+  map<string, string> tags = 4;
+  int64 timestamp = 5;
+  string caller_id = 6;
+}
+
+message EmitMetricResponse {
+  string error = 1;
+  int32 status_code = 2;
+}
+
+message SystemTuningRequest {
+  string tuning_profile = 1;
+  map<string, string> parameters = 2;
+  string caller_id = 3;
+  TpmCertificateChain caller_tmp_identity = 4; // TPM-backed caller identity (H-10)
+}
+
+message SystemTuningResponse {
+  map<string, string> applied_settings = 1;
+  string error = 2;
+  int32 status_code = 3;
+}
+
+// Health check request
+message HealthCheckRequest {
+  string caller_id = 1;
+  bool detailed = 2;
+}
+
+// Health check response
+message HealthCheckResponse {
+  string status = 1;
+  map<string, string> components = 2;
+  int64 timestamp = 3;
+  string error = 4;
+  int32 status_code = 5;
+} 

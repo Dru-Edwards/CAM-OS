@@ -1,0 +1,106 @@
+{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "cam-chart.fullname" . }}
+  labels:
+    {{- include "cam-chart.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "cam-chart.fullname" . }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.autoscaling.customMetrics }}
+    {{- range .Values.autoscaling.customMetrics }}
+    - type: {{ .type }}
+      {{- if eq .type "Pods" }}
+      pods:
+        metric:
+          name: {{ .name }}
+        target:
+          type: AverageValue
+          averageValue: {{ .target }}
+      {{- else if eq .type "Object" }}
+      object:
+        metric:
+          name: {{ .name }}
+        describedObject:
+          apiVersion: {{ .object.apiVersion }}
+          kind: {{ .object.kind }}
+          name: {{ .object.name }}
+        target:
+          type: Value
+          value: {{ .target }}
+      {{- end }}
+    {{- end }}
+    {{- end }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.autoscaling.behavior.scaleDown.stabilizationWindowSeconds | default 300 }}
+      policies:
+        - type: Percent
+          value: {{ .Values.autoscaling.behavior.scaleDown.percentPolicy | default 25 }}
+          periodSeconds: {{ .Values.autoscaling.behavior.scaleDown.periodSeconds | default 60 }}
+        - type: Pods
+          value: {{ .Values.autoscaling.behavior.scaleDown.podsPolicy | default 2 }}
+          periodSeconds: {{ .Values.autoscaling.behavior.scaleDown.periodSeconds | default 60 }}
+      selectPolicy: {{ .Values.autoscaling.behavior.scaleDown.selectPolicy | default "Min" }}
+    scaleUp:
+      stabilizationWindowSeconds: {{ .Values.autoscaling.behavior.scaleUp.stabilizationWindowSeconds | default 0 }}
+      policies:
+        - type: Percent
+          value: {{ .Values.autoscaling.behavior.scaleUp.percentPolicy | default 50 }}
+          periodSeconds: {{ .Values.autoscaling.behavior.scaleUp.periodSeconds | default 60 }}
+        - type: Pods
+          value: {{ .Values.autoscaling.behavior.scaleUp.podsPolicy | default 4 }}
+          periodSeconds: {{ .Values.autoscaling.behavior.scaleUp.periodSeconds | default 60 }}
+      selectPolicy: {{ .Values.autoscaling.behavior.scaleUp.selectPolicy | default "Max" }}
+{{- end }}
+---
+{{- if .Values.verticalPodAutoscaler.enabled }}
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: {{ include "cam-chart.fullname" . }}-vpa
+  labels:
+    {{- include "cam-chart.labels" . | nindent 4 }}
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "cam-chart.fullname" . }}
+  updatePolicy:
+    updateMode: {{ .Values.verticalPodAutoscaler.updateMode | default "Auto" }}
+  resourcePolicy:
+    containerPolicies:
+      - containerName: {{ .Chart.Name }}
+        {{- if .Values.verticalPodAutoscaler.minAllowed }}
+        minAllowed:
+          {{- toYaml .Values.verticalPodAutoscaler.minAllowed | nindent 10 }}
+        {{- end }}
+        {{- if .Values.verticalPodAutoscaler.maxAllowed }}
+        maxAllowed:
+          {{- toYaml .Values.verticalPodAutoscaler.maxAllowed | nindent 10 }}
+        {{- end }}
+        controlledResources: {{ .Values.verticalPodAutoscaler.controlledResources | default (list "cpu" "memory") | toJson }}
+        controlledValues: {{ .Values.verticalPodAutoscaler.controlledValues | default "RequestsAndLimits" }}
+{{- end }}

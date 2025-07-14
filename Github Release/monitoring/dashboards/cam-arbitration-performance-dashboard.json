@@ -1,0 +1,318 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "cam-arbitration-performance",
+    "title": "CAM Arbitration Performance",
+    "description": "Detailed arbitration engine performance metrics and analysis",
+    "tags": ["cam", "arbitration", "performance"],
+    "timezone": "browser",
+    "schemaVersion": 30,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "arbitrator",
+          "type": "query",
+          "query": "label_values(cam_arbitration_requests_total, arbitrator_id)",
+          "refresh": 1,
+          "multi": true,
+          "includeAll": true
+        },
+        {
+          "name": "provider",
+          "type": "query",
+          "query": "label_values(cam_provider_requests_total, provider)",
+          "refresh": 1,
+          "multi": true,
+          "includeAll": true
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Arbitration Success Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(cam_arbitration_requests_total{status=\"success\",arbitrator_id=~\"$arbitrator\"}[5m]) / rate(cam_arbitration_requests_total{arbitrator_id=~\"$arbitrator\"}[5m]) * 100",
+            "legendFormat": "Success Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 95
+                },
+                {
+                  "color": "green",
+                  "value": 99
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Average Arbitration Time",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(cam_arbitration_duration_seconds_sum{arbitrator_id=~\"$arbitrator\"}[5m]) / rate(cam_arbitration_duration_seconds_count{arbitrator_id=~\"$arbitrator\"}[5m])",
+            "legendFormat": "Avg Time"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "red",
+                  "value": 5
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Active Arbitrations",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "cam_active_arbitrations{arbitrator_id=~\"$arbitrator\"}",
+            "legendFormat": "Active"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 50
+                },
+                {
+                  "color": "red",
+                  "value": 100
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 4,
+        "title": "Consensus Algorithm Distribution",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum(rate(cam_consensus_requests_total{arbitrator_id=~\"$arbitrator\"}[5m])) by (algorithm)",
+            "legendFormat": "{{algorithm}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        }
+      },
+      {
+        "id": 5,
+        "title": "Arbitration Latency Distribution",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "increase(cam_arbitration_duration_seconds_bucket{arbitrator_id=~\"$arbitrator\"}[1m])",
+            "legendFormat": "{{le}}"
+          }
+        ],
+        "yAxis": {
+          "unit": "s"
+        },
+        "gridPos": {
+          "h": 10,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 6,
+        "title": "Provider Response Times",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(cam_provider_response_time_seconds_bucket{provider=~\"$provider\"}[5m]))",
+            "legendFormat": "{{provider}} - 95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(cam_provider_response_time_seconds_bucket{provider=~\"$provider\"}[5m]))",
+            "legendFormat": "{{provider}} - 50th percentile"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Seconds",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 10,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": 7,
+        "title": "Arbitration Queue Depth",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "cam_arbitration_queue_depth{arbitrator_id=~\"$arbitrator\"}",
+            "legendFormat": "{{arbitrator_id}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Requests",
+            "min": 0
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 100,
+            "colorMode": "critical",
+            "op": "gt"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 18
+        }
+      },
+      {
+        "id": 8,
+        "title": "Provider Availability Score",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "cam_provider_availability_score{provider=~\"$provider\"}",
+            "legendFormat": "{{provider}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Score",
+            "min": 0,
+            "max": 1
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 18
+        }
+      },
+      {
+        "id": 9,
+        "title": "Arbitration Decision Breakdown",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(cam_arbitration_decisions_total{arbitrator_id=~\"$arbitrator\"}[5m])",
+            "legendFormat": "{{decision_type}} - {{arbitrator_id}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 26
+        }
+      },
+      {
+        "id": 10,
+        "title": "Cost per Arbitration",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(cam_arbitration_cost_total{arbitrator_id=~\"$arbitrator\"}[5m]) / rate(cam_arbitration_requests_total{arbitrator_id=~\"$arbitrator\"}[5m])",
+            "legendFormat": "{{arbitrator_id}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Cost ($)",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 26
+        }
+      }
+    ]
+  }
+}

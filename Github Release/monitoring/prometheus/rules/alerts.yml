@@ -1,0 +1,92 @@
+groups:
+  - name: cam-os.rules
+    rules:
+      - alert: CAMOSDown
+        expr: up{job="cam-os"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CAM-OS service is down"
+          description: "The CAM-OS service has been down for more than 1 minute"
+
+      - alert: HighSyscallLatency
+        expr: histogram_quantile(0.95, cam_os_syscall_duration_seconds_bucket) > 0.001
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High syscall latency detected"
+          description: "95th percentile syscall latency is {{ $value }}s"
+
+      - alert: HighSyscallErrorRate
+        expr: rate(cam_os_syscall_errors_total[5m]) / rate(cam_os_syscall_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High syscall error rate"
+          description: "Syscall error rate is {{ $value | humanizePercentage }}"
+
+      - alert: MemoryContextErrors
+        expr: rate(cam_os_memory_context_errors_total[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Memory context errors detected"
+          description: "Memory context error rate is {{ $value }} errors/sec"
+
+      - alert: SecurityAuthFailures
+        expr: rate(cam_os_security_auth_failures_total[5m]) > 0.5
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Authentication failure rate is {{ $value }} failures/sec"
+
+      - alert: HighSchedulerQueueSize
+        expr: cam_os_scheduler_queue_size > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High scheduler queue size"
+          description: "Scheduler queue size is {{ $value }} tasks"
+
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes{job="cam-os"} / 1024 / 1024 > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "CAM-OS memory usage is {{ $value }}MB"
+
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total{job="cam-os"}[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CAM-OS CPU usage is {{ $value | humanizePercentage }}"
+
+      - alert: RedisConnectionFailures
+        expr: rate(cam_os_redis_connection_errors_total[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis connection failures"
+          description: "Redis connection failure rate is {{ $value }} failures/sec"
+
+      - alert: DriverLoadFailures
+        expr: rate(cam_os_driver_load_errors_total[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Driver load failures"
+          description: "Driver load failure rate is {{ $value }} failures/sec"
