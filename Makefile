@@ -409,3 +409,95 @@ license-check:
 	else \
 		echo "⚠️  reuse not found, install with: pip install reuse"; \
 	fi 
+
+# =============================================================================
+# Public Validation Targets
+# =============================================================================
+
+.PHONY: validate-all
+validate-all: validate-build validate-tests validate-performance validate-security ## Run complete validation suite
+
+.PHONY: validate-build
+validate-build: ## Validate that the system builds correctly
+	@echo "🔨 Validating build process..."
+	$(GO) mod tidy
+	$(GO) mod verify
+	$(MAKE) clean
+	$(MAKE) proto
+	$(MAKE) build
+	@echo "✅ Build validation passed"
+
+.PHONY: validate-tests
+validate-tests: ## Run all tests for validation
+	@echo "🧪 Running validation test suite..."
+	$(GO) test -v -timeout $(TEST_TIMEOUT) -coverprofile=$(COVERAGE_FILE) ./tests/unit/...
+	$(GO) test -v -timeout $(TEST_TIMEOUT) ./tests/integration/...
+	@echo "✅ Test validation passed"
+
+.PHONY: validate-performance
+validate-performance: ## Run performance validation
+	@echo "⚡ Running performance validation..."
+	$(GO) test -v -timeout $(TEST_TIMEOUT) -bench=. ./tests/performance/...
+	@echo "✅ Performance validation passed"
+
+.PHONY: validate-security
+validate-security: ## Run security validation
+	@echo "🔒 Running security validation..."
+	$(GO) test -v -timeout $(TEST_TIMEOUT) ./tests/integration/auth_negative_test.go
+	$(GO) test -v -timeout $(TEST_TIMEOUT) ./tests/unit/error_redaction_test.go
+	$(GO) test -v -timeout $(TEST_TIMEOUT) ./tests/unit/tpm_validation_test.go
+	@echo "✅ Security validation passed"
+
+.PHONY: validate-docker
+validate-docker: ## Validate Docker deployment
+	@echo "🐳 Validating Docker deployment..."
+	docker-compose -f docker-compose.yml build
+	docker-compose -f docker-compose.yml up -d
+	@echo "Waiting for services to start..."
+	sleep 30
+	docker-compose -f docker-compose.yml ps
+	docker-compose -f docker-compose.yml logs --tail=50
+	docker-compose -f docker-compose.yml down
+	@echo "✅ Docker validation passed"
+
+.PHONY: validate-config
+validate-config: ## Validate configuration files
+	@echo "⚙️  Validating configuration..."
+	@if [ ! -f config/validation.yaml ]; then echo "❌ Missing validation.yaml"; exit 1; fi
+	@echo "✅ Configuration validation passed"
+
+.PHONY: validation-report
+validation-report: ## Generate validation report
+	@echo "📊 Generating validation report..."
+	@mkdir -p $(BUILD_DIR)/validation-reports
+	@echo "# CAM-OS Validation Report" > $(BUILD_DIR)/validation-reports/validation-report.md
+	@echo "Generated: $(BUILD_TIME)" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@echo "Version: $(VERSION)" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@echo "Commit: $(COMMIT_HASH)" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@echo "" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@echo "## Build Status" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@$(MAKE) validate-build >> $(BUILD_DIR)/validation-reports/validation-report.md 2>&1 || echo "❌ Build Failed" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@echo "" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@echo "## Test Results" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@$(MAKE) validate-tests >> $(BUILD_DIR)/validation-reports/validation-report.md 2>&1 || echo "❌ Tests Failed" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@echo "" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@echo "## Performance Results" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@$(MAKE) validate-performance >> $(BUILD_DIR)/validation-reports/validation-report.md 2>&1 || echo "❌ Performance Tests Failed" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@echo "" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@echo "## Security Results" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@$(MAKE) validate-security >> $(BUILD_DIR)/validation-reports/validation-report.md 2>&1 || echo "❌ Security Tests Failed" >> $(BUILD_DIR)/validation-reports/validation-report.md
+	@echo "✅ Validation report generated: $(BUILD_DIR)/validation-reports/validation-report.md"
+
+.PHONY: validation-demo
+validation-demo: ## Run interactive validation demo
+	@echo "🎯 Starting CAM-OS validation demo..."
+	@echo "This will demonstrate key system capabilities for validation."
+	@echo "Starting services..."
+	docker-compose -f docker-compose.yml up -d
+	@echo "Waiting for services to be ready..."
+	sleep 30
+	@echo "Running demo syscalls..."
+	$(GO) run examples/demonstration/main.go
+	@echo "Demo completed. Check logs for results."
+	docker-compose -f docker-compose.yml down
+	@echo "✅ Validation demo completed" 
