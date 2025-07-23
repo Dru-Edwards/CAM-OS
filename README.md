@@ -6,7 +6,6 @@
 
 **Cognitive Operating System Kernel for AI-Native Infrastructure**
 
-[![Build Status](https://github.com/Dru-Edwards/CAM-OS/actions/workflows/ci.yml/badge.svg)](https://github.com/Dru-Edwards/CAM-OS/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen)](https://github.com/Dru-Edwards/CAM-OS/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Dru-Edwards/CAM-OS)](https://goreportcard.com/report/github.com/Dru-Edwards/CAM-OS)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
