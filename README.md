@@ -27,7 +27,7 @@ $ camctl explain "Why did Agent‑B throttle I/O yesterday?"
 
 | Stable release      | Next minor                                                | Live demo                                          |
 | ------------------- | --------------------------------------------------------- | -------------------------------------------------- |
-| `v2.0.0` · May 2025 | **v2.1.0** ETA Jul 2025 (K8s Operator · NL CLI · OTel ++) | [https://demo.cam‑os.dev](https://demo.cam‑os.dev) |
+| `v2.0.0` · May 2025 | **v2.1.0** ETA Jul 2025 (K8s Operator · NL CLI · OTel ++) | |
 
 ---
 
