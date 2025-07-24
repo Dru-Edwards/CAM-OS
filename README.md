@@ -15,84 +15,84 @@
 </div>
 
 
-> **CAM‑OS** is the **first AI‑native micro‑kernel** that treats autonomous *agents* the way Linux treats *processes.* It ships with sub‑millisecond decision loops, post‑quantum zero‑trust security, and built‑in explainability.
+> **CAM‑OS** is the **first AI‑native micro‑kernel** that treats autonomous *agents* the way Linux treats *processes.* It ships with sub‑millisecond decision loops, post‑quantum zero‑trust security, and built‑in explainability.
 
 ```
 $ camctl explain "Why did Agent‑B throttle I/O yesterday?"
-→ 09 Jul 23:21   Arbitration #3215   policy:EnergyBalance   trust:+0.8
-   ↳ Agent‑B I/O > quota (675 MB/s > 500)
-   ↳ Energy cost exceeded 25 Wh budget
-   ↳ Decision: throttle 25 % for 90 s
+→ 09 Jul 23:21   Arbitration #3215   policy:EnergyBalance   trust:+0.8
+   ↳ Agent‑B I/O > quota (675 MB/s > 500)
+   ↳ Energy cost exceeded 25 Wh budget
+   ↳ Decision: throttle 25 % for 90 s
 ```
 
-| Stable release      | Next minor                                                | Live demo                                          |
+| Stable release      | Next minor                                                | Live demo                                          |
 | ------------------- | --------------------------------------------------------- | -------------------------------------------------- |
-| `v2.0.0` · May 2025 | **v2.1.0** ETA Jul 2025 (K8s Operator · NL CLI · OTel ++) | |
+| `v2.0.0` · May 2025 | **v2.1.0** ETA Q3 2025 (K8s Operator · NL CLI · OTel ++) | [Demo Coming Soon](https://github.com/Dru-Edwards/CAM-OS/discussions) |
 
 ---
 
-## 🚀 Key Differentiators
+## 🚀 Key Differentiators
 
-### 🧠 Cognitive Syscalls
+### 🧠 Cognitive Syscalls
 
-*15 verbs for think · learn · arbitrate · explain* (see full table ↓)
-🔍 Every call emits Prom‑metrics + OTEL spans.
+*15 verbs for think · learn · arbitrate · explain* (see full table ↓)
+🔍 Every call emits Prom‑metrics + OTEL spans.
 
-### 🔒 Quantum‑Safe Zero‑Trust
+### 🔒 Quantum‑Safe Zero‑Trust
 
-Kyber‑768 key exchange · Dilithium‑3 signatures · TPM 2.0 trust‑anchor · OPA policy enforcement.
+Kyber‑768 key exchange · Dilithium‑3 signatures · TPM 2.0 trust‑anchor · OPA policy enforcement.
 
-### 🛰 5‑D Triple‑Helix Scheduler
+### 🛰 5‑D Triple‑Helix Scheduler
 
 Schedules by **Urgency · Importance · Efficiency · Energy · Trust** — keeps fleets aligned to your values.
 
-### 📚 Explainability & Audit
+### 📚 Explainability & Audit
 
 `sys_explain_action` returns causal chain + policy snapshot — pass audits without extra tooling.
 
-### 🛠 Developer‑First
+### 🛠 Developer‑First
 
-Go → single static binary · WASM/WASI driver runtime · Helm & Docker templates · <1 min local boot.
+Go → single static binary · WASM/WASI driver runtime · Helm & Docker templates · <1 min local boot.
 
 ---
 
 <details>
-<summary><strong>🧠 Full Syscall Matrix (Click to Open)</strong></summary>
+<summary><strong>🧠 Full Syscall Matrix (Click to Open)</strong></summary>
 
 | Category          | Verb                                                           | Purpose                       |
 | ----------------- | -------------------------------------------------------------- | ----------------------------- |
 | **Core**          | `think` · `decide` · `learn` · `remember` · `forget`           | Embedded cognition primitives |
-| **Agent Ops**     | `communicate` · `collaborate` · `arbitrate` · `register_agent` | Multi‑agent coordination      |
-| **Task Ops**      | `commit_task` · `rollback_task` · `query_policy`               | Transactional task mgmt       |
+| **Agent Ops**     | `communicate` · `collaborate` · `arbitrate` · `register_agent` | Multi‑agent coordination      |
+| **Task Ops**      | `commit_task` · `rollback_task` · `query_policy`               | Transactional task mgmt       |
 | **Observability** | `observe` · `explain_action`                                   | Trace + human rationale       |
 | **Tuning**        | `tune_system`                                                  | Live‑patch scheduler weights  |
 
-> 💾 Protobuf spec: [`proto/syscall.proto`](proto/syscall.proto)
+> 💾 Protobuf spec: [`proto/syscall.proto`](proto/syscall.proto)
 
 </details>
 
 ---
 
-## 🏗 Architecture Snapshot
+## 🏗 Architecture Snapshot
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│                   CAM‑OS KERNEL                      │
+│                   CAM‑OS KERNEL                      │
 ├───────────┬──────────────┬──────────────────────────┤
 │ Syscalls  │  Security    │  Explainability Engine   │
 │  (15)     │  Manager     │  + OTEL                  │
 ├───────────┼──────────────┼──────────────────────────┤
 │  Arbitration Engine  │ Memory Context │ 5‑D Scheduler │
 ├──────────────────────┴──────────────────────────────┤
-│     Driver Runtime (gRPC ⇆ WASM/WASI sandboxes)      │
+│     Driver Runtime (gRPC ⇆ WASM/WASI sandboxes)      │
 ├──────────────────────────────────────────────────────┤
-│ Redis / CAS store │ Prometheus │ Jaeger/Tempo tracing │
+│ Redis / CAS store │ Prometheus │ Jaeger/Tempo tracing │
 └──────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## ⚡️ Quick‑Start Matrix
+## ⚡️ Quick‑Start Matrix
 
 | Scenario                   | Command                                                      |
 | -------------------------- | ------------------------------------------------------------ |
@@ -100,11 +100,11 @@ Go → single static binary · WASM/WASI driver runtime · Helm & Docker templa
 | **Docker PoC**             | `docker compose -f deployment/docker-compose.test.yml up`    |
 | **Kubernetes (kind)**      | `helm install cam-os deployment/helm --set image.tag=v2.0.0` |
 
-> *Prereqs:* Go 1.21+, Docker 24+, Redis 7, `protoc ≥ 24`.
+> *Prereqs:* Go 1.21+, Docker 24+, Redis 7, `protoc ≥ 24`.
 
 ---
 
-## 🧪 Quality Gates
+## 🧪 Quality Gates
 
 ```bash
 make test       # unit + integ + crypto mocks
@@ -112,33 +112,33 @@ make fuzz       # libFuzzer across all syscalls
 make ci‑check   # lint · vet · gosec · sbom
 ```
 
-CI must pass: **≥ 90 % coverage · zero MEDIUM gosec · ABI drift check**  (see `.github/workflows/ci.yml`).
+CI must pass: **≥ 90 % coverage · zero MEDIUM gosec · ABI drift check**  (see `.github/workflows/ci.yml`).
 
 ---
 
-## 🎯 Performance Benchmarks (v2.0.0)
+## 🎯 Performance Benchmarks (v2.0.0)
 
 | Metric      | Target       | Achieved |
 | ----------- | ------------ | -------- |
-| Syscall p99 | < 1 ms       | 0.83 ms  |
-| Throughput  | > 10 k ops/s | 11.4 k   |
-| Base RAM    | < 100 MB     | 82 MB    |
-| Crypto ∅    | < 5 % CPU    | 3.1 %    |
+| Syscall p99 | < 1 ms       | 0.83 ms  |
+| Throughput  | > 10 k ops/s | 11.4 k   |
+| Base RAM    | < 100 MB     | 82 MB    |
+| Crypto ∅    | < 5 % CPU    | 3.1 %    |
 
-Benchmark scripts: `benchmarks/` (runs in GH Actions on release tags).
+Benchmark scripts: `benchmarks/` (runs in GH Actions on release tags).
 
 ---
 
-## 🌍 Deployment Footprint
+## 🌍 Deployment Footprint
 
 * **Docker / Compose** — turnkey demo.
 * **Kubernetes** — Helm chart **+ Operator** (in v2.1.0).
-* **Cloud IaC** — AWS CFN, Azure Bicep, GCP Deployment Manager samples.
+* **Cloud IaC** — AWS CFN, Azure Bicep, GCP Deployment Manager samples.
 * **Edge / Bare‑metal** — Systemd units; TPM provisioning helper.
 
 ---
 
-## 🔧 Hacking Guide
+## 🔧 Hacking Guide
 
 ```bash
 # 1. Clone & install deps
@@ -153,24 +153,24 @@ redis-server --daemonize yes
 CONFIG=config/dev.yaml go run ./cmd/cam-kernel
 ```
 
-Branch → `feat/<ticket>` → PR → green CI = auto‑merge ✅
+Branch → `feat/<ticket>` → PR → green CI = auto‑merge ✅
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for code‑style & CLA.
 
 ---
 
-## 🛣 Roadmap (Public Milestones)
+## 🛣 Roadmap (Public Milestones)
 
-| Version    | ETA      | Key Features                                  |
+| Version    | ETA      | Key Features                                  |
 | ---------- | -------- | --------------------------------------------- |
-| **v2.1.0** | Jul 2025 | K8s Operator · Natural‑language CLI · OTel ++ |
-| **v2.2.x** | Q4 2025  | CRDT federation · Driver marketplace beta     |
+| **v2.1.0** | Q3 2025  | K8s Operator · Natural‑language CLI · OTel ++ |
+| **v2.2.x** | Q4 2025  | CRDT federation · Driver marketplace beta     |
 | **v2.3.x** | 2026     | Quantum offload POC · Edge bundles            |
 
 Full board: [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
-## 📊 Observability Stack
+## 📊 Observability Stack
 
 * **Prometheus** — kernel, scheduler, Redis metrics.
 * **Grafana dashboards** — `monitoring/grafana/` JSON.
@@ -179,30 +179,28 @@ Full board: [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
-## 🔒 Security Posture
+## 🔒 Security Posture
 
 * PQ‑crypto everywhere (Kyber‑768 / Dilithium‑3)
-* TPM 2.0 backed CAM Trust Envelope
+* TPM 2.0 backed CAM Trust Envelope
 * OPA policies for every verb
 * Signed WASM drivers & SBOM on release
 
-**Bug bounty:** see [`SECURITY.md`](docs/security/SECURITY.md).
+**Bug bounty:** see [`SECURITY.md`](SECURITY.md).
 
 ---
 
-## 🤝 Community & Support
+## 🤝 Community & Support
 
 | Channel                | Use‑case                                                   |
 | ---------------------- | ---------------------------------------------------------- |
 | **GitHub Issues**      | Bugs & feature requests                                    |
 | **Discussions tab**    | Ideas · Q\&A · RFCs                                        |
-| **Driver Marketplace** | [https://registry.cam-os.dev](https://registry.cam-os.dev) |
+| **Driver Marketplace** | Coming Soon                                                |
 | **Enterprise Email**   | [enterprise@cam-os.dev](mailto:enterprise@cam-os.dev)      |
 
-> Star ⭐ the repo if CAM‑OS sparks your imagination — it helps the project grow!
+> Star ⭐ the repo if CAM‑OS sparks your imagination — it helps the project grow!
 
 ---
 
 *Built with ❤️ by the CAM‑OS community — bringing cognitive computing to every edge of the planet.* 🧠✨
-
-</div>
